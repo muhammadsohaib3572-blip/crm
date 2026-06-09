@@ -1,13 +1,14 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
+from app.database.session import engine, AsyncSessionLocal
 from app.routers import (
     auth, devices, clients, leads, tasks, billing, inventory,
-    users, notifications, activity_logs, dashboard, issues, uploads, reports
+    users, notifications, activity_logs, dashboard, issues, uploads, reports, components
 )
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.middleware.error_handler import ErrorHandlerMiddleware
-from app.middleware.logging import LoggingMiddleware
+from app.middleware.logging import AuditMiddleware
 
 app = FastAPI(
     title="Crop2X Internal CRM & Operations Management System",
@@ -17,7 +18,7 @@ app = FastAPI(
 
 # Add middleware (order matters - first added is outermost)
 app.add_middleware(ErrorHandlerMiddleware)
-app.add_middleware(LoggingMiddleware)
+app.add_middleware(AuditMiddleware, db_session_maker=AsyncSessionLocal)
 app.add_middleware(RateLimitMiddleware, calls=100, period=60)
 
 # Set all CORS enabled origins
@@ -37,6 +38,7 @@ app.include_router(leads.router, prefix="/leads", tags=["Leads"])
 app.include_router(tasks.router, prefix="/tasks", tags=["Tasks"])
 app.include_router(billing.router, prefix="/billing", tags=["Billing"])
 app.include_router(inventory.router, prefix="/inventory", tags=["Inventory"])
+app.include_router(components.router, prefix="/components", tags=["Components"])
 app.include_router(notifications.router, prefix="/notifications", tags=["Notifications"])
 app.include_router(activity_logs.router, prefix="/activity-logs", tags=["Activity Logs"])
 app.include_router(dashboard.router, prefix="/dashboard", tags=["Dashboard"])

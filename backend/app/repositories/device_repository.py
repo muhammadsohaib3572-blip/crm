@@ -14,7 +14,7 @@ class DeviceRepository:
     async def get_all(self, skip: int = 0, limit: int = 100) -> List[Device]:
         result = await self.db.execute(
             select(Device)
-            .options(selectinload(Device.history))
+            .options(selectinload(Device.history).selectinload(DeviceHistory.changed_by))
             .order_by(desc(Device.updated_at))
             .offset(skip)
             .limit(limit)
@@ -24,7 +24,7 @@ class DeviceRepository:
     async def get_by_id(self, device_id: UUID) -> Optional[Device]:
         result = await self.db.execute(
             select(Device)
-            .options(selectinload(Device.history))
+            .options(selectinload(Device.history).selectinload(DeviceHistory.changed_by))
             .where(Device.id == device_id)
         )
         return result.scalars().first()
@@ -42,7 +42,8 @@ class DeviceRepository:
         # Create initial history log
         history = DeviceHistory(
             device_id=db_device.id,
-            status=db_device.status,
+            previous_status=None,
+            new_status=db_device.status,
             changed_by_id=user_id,
             notes="Initial creation"
         )
@@ -68,11 +69,12 @@ class DeviceRepository:
         if new_status and new_status != old_status:
             history = DeviceHistory(
                 device_id=db_device.id,
-                status=new_status,
+                previous_status=old_status,
+                new_status=new_status,
                 changed_by_id=user_id,
-                notes=f"Status changed from {old_status} to {new_status}"
+                notes=update_data.get("notes") or f"Status changed from {old_status} to {new_status}"
             )
             self.db.add(history)
 
         await self.db.commit()
-        return await self.get_by_id(db_device.id)
+        return await self.get_by_id(db_device.id)

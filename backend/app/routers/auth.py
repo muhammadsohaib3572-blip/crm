@@ -1,12 +1,13 @@
-from fastapi import APIRouter, Body, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database.session import get_db
 from app.repositories.user_repository import UserRepository
 from app.services.auth_service import AuthService
 from app.services.refresh_token_service import RefreshTokenService
+from app.services.activity_log_service import ActivityLogService
 from app.schemas.user import Token, UserInDB, UserCreate
-from app.routers.deps import get_current_user
+from app.routers.deps import get_current_user_for_middleware
 from app.models.user import User
 from app.core.security import get_password_hash
 from jose import jwt, JWTError
@@ -45,6 +46,7 @@ async def register(
 
 @router.post("/login", response_model=Token)
 async def login(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     form_data: OAuth2PasswordRequestForm = Depends()
 ):
@@ -67,6 +69,17 @@ async def login(
     access_token = auth_service.create_token(user)
     refresh_token = RefreshTokenService.create_refresh_token(user.id)
     await RefreshTokenService.save_refresh_token(db, user.id, refresh_token)
+
+    # Audit log login (non-fatal — don't break login if audit table missing)
+    ip = request.client.host if request.client else "unknown"
+    try:
+        await ActivityLogService.log_activity(
+            db, user.id, user.full_name, "LOGIN", "User",
+            f"User '{user.email}' logged in", entity_id=user.id,
+            ip_address=ip, role=user.role
+        )
+    except Exception:
+        pass  # Never break auth for audit failures
 
     return {
         "access_token": access_token,
@@ -114,12 +127,23 @@ async def refresh_token(
 
 @router.post("/logout")
 async def logout(
+    request: Request,
     refresh_token: str = Body(...),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_for_middleware)
 ):
     """Logout user by revoking refresh token"""
     await RefreshTokenService.revoke_refresh_token(db, refresh_token)
+
+    ip = request.client.host if request.client else "unknown"
+    try:
+        await ActivityLogService.log_activity(
+            db, current_user.id, current_user.full_name, "LOGOUT", "User",
+            f"User '{current_user.email}' logged out", entity_id=current_user.id,
+            ip_address=ip, role=current_user.role
+        )
+    except Exception:
+        pass  # Never break logout for audit failures
     return {"message": "Successfully logged out"}
 
 @router.post("/create-admin")
@@ -154,5 +178,5 @@ async def create_admin(
     return {"message": "Admin user created successfully", "user": {"email": user.email, "full_name": user.full_name, "role": user.role}}
 
 @router.get("/me", response_model=UserInDB)
-async def read_users_me(current_user: User = Depends(get_current_user)):
+async def read_users_me(current_user: User = Depends(get_current_user_for_middleware)):
     return current_user

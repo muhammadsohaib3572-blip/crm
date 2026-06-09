@@ -7,7 +7,7 @@ from app.database.session import get_db
 from app.models.notification import Notification
 from app.schemas.notification import NotificationCreate, NotificationUpdate, NotificationInDB
 from app.models.user import User
-from app.routers.deps import get_current_user
+from app.routers.deps import get_current_user_for_middleware
 
 router = APIRouter()
 
@@ -17,7 +17,7 @@ async def get_notifications(
     limit: int = 50,
     unread_only: bool = False,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_for_middleware)
 ):
     """Get notifications for current user"""
     query = select(Notification).where(Notification.user_id == current_user.id)
@@ -32,7 +32,7 @@ async def get_notifications(
 @router.get("/unread-count")
 async def get_unread_count(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_for_middleware)
 ):
     """Get count of unread notifications"""
     query = select(func.count(Notification.id)).where(
@@ -48,7 +48,7 @@ async def mark_notification_read(
     notification_id: UUID,
     notification_in: NotificationUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_for_middleware)
 ):
     """Mark notification as read/unread"""
     result = await db.execute(
@@ -72,7 +72,7 @@ async def mark_notification_read(
 @router.post("/mark-all-read")
 async def mark_all_read(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_for_middleware)
 ):
     """Mark all notifications as read"""
     result = await db.execute(
@@ -93,7 +93,7 @@ async def mark_all_read(
 async def delete_notification(
     notification_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_for_middleware)
 ):
     """Delete a notification"""
     result = await db.execute(
@@ -110,3 +110,22 @@ async def delete_notification(
     await db.delete(notification)
     await db.commit()
     return {"message": "Notification deleted"}
+@router.post("/", response_model=NotificationInDB, status_code=status.HTTP_201_CREATED)
+async def create_notification(
+    notification_in: NotificationCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user_for_middleware)
+) -> NotificationInDB:
+    """Create a new notification for the current user"""
+    new_notification = Notification(
+        user_id=current_user.id,
+        title=notification_in.title,
+        message=notification_in.message,
+        type=notification_in.type,
+        link=notification_in.link,
+    )
+    db.add(new_notification)
+    await db.commit()
+    await db.refresh(new_notification)
+    return new_notification
+

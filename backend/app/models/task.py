@@ -25,8 +25,9 @@ class Task(Base, IDMixin, TimestampMixin):
     priority: Mapped[TaskPriority] = mapped_column(SQLAlchemyEnum(TaskPriority), default=TaskPriority.MEDIUM, nullable=False)
     due_date: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     
-    assigned_to_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+    assigned_to_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
     device_id: Mapped[Optional[uuid.UUID]] = mapped_column(ForeignKey("devices.id", ondelete="SET NULL"), nullable=True)
+
     client_id: Mapped[Optional[uuid.UUID]] = mapped_column(ForeignKey("clients.id", ondelete="SET NULL"), nullable=True)
 
     assigned_to: Mapped["User"] = relationship("User")

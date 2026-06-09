@@ -3,43 +3,34 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { 
-  LayoutDashboard, 
-  Users, 
-  UserPlus, 
-  Cpu, 
-  CheckSquare, 
-  Package, 
-  CreditCard, 
-  Bell,
-  Activity,
-  Settings,
-  LogOut
+import {
+  LayoutDashboard, Users, TrendingUp, Cpu, CheckSquare,
+  Package, CreditCard, Bell, Activity, LogOut, X,
+  FileText, AlertCircle, UserCog, BarChart2, CircuitBoard,
 } from 'lucide-react';
 import api from '@/services/api/axios';
 import { useAuthStore } from '@/store/auth/useAuthStore';
+import { NAV_ITEMS } from '@/lib/rbac';
 
-const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['ADMIN', 'MANAGER', 'BUSINESS', 'AGRONOMY', 'HARDWARE', 'ACCOUNTS'] },
-  { name: 'Clients', href: '/clients', icon: Users, roles: ['ADMIN', 'MANAGER', 'BUSINESS', 'AGRONOMY', 'ACCOUNTS'] },
-  { name: 'Leads', href: '/leads', icon: UserPlus, roles: ['ADMIN', 'MANAGER', 'BUSINESS'] },
-  { name: 'Devices', href: '/devices', icon: Cpu, roles: ['ADMIN', 'MANAGER', 'AGRONOMY', 'HARDWARE'] },
-  { name: 'Tasks', href: '/tasks', icon: CheckSquare, roles: ['ADMIN', 'MANAGER', 'BUSINESS', 'AGRONOMY', 'HARDWARE', 'ACCOUNTS'] },
-  { name: 'Performance', href: '/performance', icon: Activity, roles: ['ADMIN', 'MANAGER'] },
-  { name: 'Inventory', href: '/inventory', icon: Package, roles: ['ADMIN', 'MANAGER', 'HARDWARE'] },
-  { name: 'Billing', href: '/billing', icon: CreditCard, roles: ['ADMIN', 'MANAGER', 'ACCOUNTS'] },
-  { name: 'Notifications', href: '/notifications', icon: Bell, roles: ['ADMIN', 'MANAGER', 'BUSINESS', 'AGRONOMY', 'HARDWARE', 'ACCOUNTS'] },
-  { name: 'Activity Logs', href: '/activity-logs', icon: Activity, roles: ['ADMIN', 'MANAGER'] },
-  { name: 'Users', href: '/users', icon: Users, roles: ['ADMIN', 'MANAGER'] },
-];
+const ICON_MAP: Record<string, React.ElementType> = {
+  LayoutDashboard, Users, TrendingUp, Cpu, CheckSquare,
+  Package, CreditCard, Bell, Activity, FileText,
+  AlertCircle, UserCog, BarChart2, CircuitBoard,
+};
 
-export default function Sidebar() {
+interface SidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
   const pathname = usePathname();
   const { user, clearAuth } = useAuthStore();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  const filteredNavigation = navigation.filter(
-    (item) => !item.roles || (user && item.roles.includes(user.role))
+  // Filter nav items strictly by role
+  const visibleNav = NAV_ITEMS.filter(
+    (item) => user && item.roles.includes(user.role)
   );
 
   const handleLogout = async () => {
@@ -49,55 +40,86 @@ export default function Sidebar() {
       if (refreshToken) {
         await api.post('/auth/logout', { refresh_token: refreshToken });
       }
-    } catch (error) {
-      console.error('Logout failed', error);
+    } catch {
+      // ignore errors — clear local auth anyway
     } finally {
       clearAuth();
       window.location.href = '/login';
     }
   };
 
+  const roleLabel: Record<string, string> = {
+    ADMIN: 'Admin',
+    MANAGER: 'Manager',
+    BUSINESS: 'Business',
+    AGRONOMY: 'Agronomy',
+    HARDWARE: 'Hardware',
+    ACCOUNTS: 'Accounts',
+    EMPLOYEE: 'Employee',
+  };
+
   return (
-    <div className="flex flex-col w-64 bg-slate-900 text-white min-h-screen">
-      <div className="p-6">
-        <h1 className="text-2xl font-bold tracking-tight text-blue-400">Crop2X CRM</h1>
-        {user && (
-          <div className="mt-2 text-xs text-slate-400">
-            {user.full_name} ({user.role})
-          </div>
-        )}
+    <aside
+      className={`fixed inset-y-0 left-0 z-40 flex w-72 max-w-[85vw] flex-col bg-slate-900 text-white shadow-2xl transition-transform duration-300 lg:static lg:translate-x-0 lg:shadow-none ${
+        isOpen ? 'translate-x-0' : '-translate-x-full'
+      }`}
+    >
+      {/* Logo / user info */}
+      <div className="flex items-center justify-between border-b border-slate-800 p-5 lg:border-b-0">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-blue-400">Crop2X CRM</h1>
+          {user && (
+            <div className="mt-1 text-xs text-slate-400">
+              <span className="font-semibold text-slate-300">{user.full_name}</span>
+              <span className="ml-2 px-1.5 py-0.5 bg-blue-900/60 rounded text-blue-300 text-[10px] font-bold uppercase">
+                {roleLabel[user.role] ?? user.role}
+              </span>
+            </div>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="inline-flex rounded-md border border-slate-700 p-2 text-slate-200 hover:bg-slate-800 lg:hidden"
+          aria-label="Close navigation menu"
+        >
+          <X className="h-4 w-4" />
+        </button>
       </div>
-      
-      <nav className="flex-1 px-4 space-y-1">
-        {filteredNavigation.map((item) => {
-          const isActive = pathname === item.href;
+
+      {/* Navigation */}
+      <nav className="flex-1 space-y-1 overflow-y-auto px-4 py-4">
+        {visibleNav.map((item) => {
+          const Icon = ICON_MAP[item.iconName] ?? LayoutDashboard;
+          const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
           return (
             <Link
-              key={item.name}
+              key={item.href}
               href={item.href}
-              className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
-                isActive 
-                ? 'bg-blue-600 text-white' 
-                : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+              className={`flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-colors ${
+                isActive
+                  ? 'bg-blue-600 text-white'
+                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'
               }`}
             >
-              <item.icon className="w-5 h-5 mr-3" />
+              <Icon className="w-4 h-4 mr-3 flex-shrink-0" />
               {item.name}
             </Link>
           );
         })}
       </nav>
 
-      <div className="p-4 border-t border-slate-800">
+      {/* Logout */}
+      <div className="border-t border-slate-800 p-4">
         <button
           onClick={handleLogout}
           disabled={isLoggingOut}
-          className="flex items-center w-full px-4 py-3 text-sm font-medium text-slate-300 rounded-lg hover:bg-red-900/20 hover:text-red-400 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex items-center w-full px-4 py-2.5 text-sm font-medium text-slate-300 rounded-lg hover:bg-red-900/20 hover:text-red-400 transition-colors disabled:opacity-60"
         >
-          <LogOut className="w-5 h-5 mr-3" />
+          <LogOut className="w-4 h-4 mr-3" />
           {isLoggingOut ? 'Logging out...' : 'Logout'}
         </button>
       </div>
-    </div>
+    </aside>
   );
 }

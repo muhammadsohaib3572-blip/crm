@@ -3,8 +3,11 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy import desc
 from sqlalchemy.exc import IntegrityError
-from app.models.inventory import InventoryItem, Procurement
-from app.schemas.inventory import InventoryItemCreate, InventoryItemUpdate, ProcurementCreate
+from app.models.inventory import InventoryItem, Procurement, Component, ProcurementComponent
+from app.schemas.inventory import (
+    InventoryItemCreate, InventoryItemUpdate, ProcurementCreate,
+    ComponentCreate, ComponentUpdate, ProcurementComponentCreate
+)
 from uuid import UUID
 from typing import List, Optional
 
@@ -65,3 +68,49 @@ class InventoryRepository:
         await self.db.commit()
         await self.db.refresh(db_procurement)
         return db_procurement
+
+    # ── Component Inventory methods ──
+    async def get_all_components(self, skip: int = 0, limit: int = 100) -> List[Component]:
+        result = await self.db.execute(
+            select(Component)
+            .options(selectinload(Component.procurements))
+            .order_by(desc(Component.updated_at))
+            .offset(skip)
+            .limit(limit)
+        )
+        return result.scalars().all()
+
+    async def get_component_by_id(self, component_id: UUID) -> Optional[Component]:
+        result = await self.db.execute(
+            select(Component)
+            .options(selectinload(Component.procurements))
+            .where(Component.id == component_id)
+        )
+        return result.scalars().first()
+
+    async def create_component(self, component_in: ComponentCreate) -> Component:
+        db_component = Component(**component_in.model_dump())
+        self.db.add(db_component)
+        await self.db.commit()
+        return await self.get_component_by_id(db_component.id)
+
+    async def update_component(self, db_component: Component, component_in: ComponentUpdate) -> Component:
+        update_data = component_in.model_dump(exclude_unset=True)
+        for field, value in update_data.items():
+            setattr(db_component, field, value)
+        await self.db.commit()
+        return await self.get_component_by_id(db_component.id)
+
+    async def procure_component(self, procurement_in: ProcurementComponentCreate) -> ProcurementComponent:
+        db_procurement = ProcurementComponent(**procurement_in.model_dump())
+        self.db.add(db_procurement)
+
+        # Update component stock quantity
+        component = await self.get_component_by_id(procurement_in.component_id)
+        if component:
+            component.stock_quantity += procurement_in.quantity
+
+        await self.db.commit()
+        await self.db.refresh(db_procurement)
+        return db_procurement
+

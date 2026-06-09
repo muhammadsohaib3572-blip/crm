@@ -4,32 +4,29 @@ import { useEffect } from 'react';
 import { useAuthStore } from '@/store/auth/useAuthStore';
 import api from '@/services/api/axios';
 import { usePathname, useRouter } from 'next/navigation';
+import { hasRouteAccess } from '@/lib/rbac';
 import './globals.css';
 
-const publicPaths = ['/', '/login', '/register'];
+const PUBLIC_PATHS = ['/', '/login', '/register', '/unauthorized'];
 
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const setAuth   = useAuthStore((s) => s.setAuth);
+  const setLoading = useAuthStore((s) => s.setLoading);
+  const isLoading  = useAuthStore((s) => s.isLoading);
+  const user       = useAuthStore((s) => s.user);
+  const pathname   = usePathname();
+  const router     = useRouter();
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const setAuth = useAuthStore((state) => state.setAuth);
-  const setLoading = useAuthStore((state) => state.setLoading);
-  const isLoading = useAuthStore((state) => state.isLoading);
-  const pathname = usePathname();
-  const router = useRouter();
-
+  // Rehydrate auth from localStorage on mount
   useEffect(() => {
     const initAuth = async () => {
       const token = localStorage.getItem('access_token');
       const refreshToken = localStorage.getItem('refresh_token');
-
       if (token) {
         try {
           const res = await api.get('/auth/me');
           setAuth(res.data, token, refreshToken ?? undefined);
-        } catch (error) {
+        } catch {
           localStorage.removeItem('access_token');
           localStorage.removeItem('refresh_token');
         }
@@ -39,11 +36,22 @@ export default function RootLayout({
     initAuth();
   }, [setAuth, setLoading]);
 
+  // Route guard: runs whenever pathname or auth state changes
   useEffect(() => {
-    if (!isLoading && !publicPaths.includes(pathname) && !localStorage.getItem('access_token')) {
-      router.replace('/login');
+    if (isLoading) return;
+
+    const isPublic = PUBLIC_PATHS.includes(pathname);
+
+    if (!user) {
+      if (!isPublic) router.replace('/login');
+      return;
     }
-  }, [isLoading, pathname, router]);
+
+    // Authenticated — check role access
+    if (!isPublic && !hasRouteAccess(pathname, user.role)) {
+      router.replace('/unauthorized');
+    }
+  }, [isLoading, user, pathname, router]);
 
   return (
     <html lang="en">

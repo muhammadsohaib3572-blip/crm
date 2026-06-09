@@ -18,9 +18,10 @@ class Device(Base, IDMixin, TimestampMixin):
 
     name: Mapped[str] = mapped_column(String, nullable=False)
     serial_number: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
-    status: Mapped[DeviceStatus] = mapped_column(SQLAlchemyEnum(DeviceStatus), default=DeviceStatus.UNDER_DEVELOPMENT, nullable=False)
+    status: Mapped[DeviceStatus] = mapped_column(SQLAlchemyEnum(DeviceStatus), default=DeviceStatus.UNDER_DEVELOPMENT, nullable=False, index=True)
     installation_location: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     client_id: Mapped[Optional[uuid.UUID]] = mapped_column(ForeignKey("clients.id"), nullable=True)
+
     assigned_hardware_id: Mapped[Optional[uuid.UUID]] = mapped_column(ForeignKey("users.id"), nullable=True)
     assigned_agronomist_id: Mapped[Optional[uuid.UUID]] = mapped_column(ForeignKey("users.id"), nullable=True)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -31,12 +32,24 @@ class Device(Base, IDMixin, TimestampMixin):
     history: Mapped[List["DeviceHistory"]] = relationship(back_populates="device", cascade="all, delete-orphan")
 
 class DeviceHistory(Base, IDMixin):
-    __tablename__ = "device_history"
+    __tablename__ = "device_status_history"
 
     device_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("devices.id"), nullable=False)
-    status: Mapped[DeviceStatus] = mapped_column(SQLAlchemyEnum(DeviceStatus), nullable=False)
+    previous_status: Mapped[Optional[DeviceStatus]] = mapped_column(SQLAlchemyEnum(DeviceStatus), nullable=True)
+    new_status: Mapped[DeviceStatus] = mapped_column(SQLAlchemyEnum(DeviceStatus), nullable=False)
     changed_by_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
 
     device: Mapped["Device"] = relationship(back_populates="history")
+    changed_by: Mapped["User"] = relationship("User", foreign_keys=[changed_by_id])
+
+    # Compatibility properties for old code using status
+    @property
+    def status(self) -> DeviceStatus:
+        return self.new_status
+
+    @status.setter
+    def status(self, val: DeviceStatus):
+        self.new_status = val
+

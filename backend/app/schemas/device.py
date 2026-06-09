@@ -4,22 +4,33 @@ from datetime import datetime
 from typing import Optional, List
 from app.models.device import DeviceStatus
 
+from app.schemas.user import UserInDB
+
 class DeviceHistoryBase(BaseModel):
-    status: DeviceStatus
+    previous_status: Optional[DeviceStatus] = None
+    new_status: DeviceStatus
     notes: Optional[str] = None
+    # For backward compatibility
+    status: DeviceStatus
 
 class DeviceHistoryCreate(DeviceHistoryBase):
     device_id: UUID
     changed_by_id: UUID
 
-class DeviceHistoryInDB(DeviceHistoryBase):
+class DeviceHistoryInDB(BaseModel):
     id: UUID
     device_id: UUID
+    previous_status: Optional[DeviceStatus] = None
+    new_status: DeviceStatus
+    status: DeviceStatus
+    notes: Optional[str] = None
     changed_by_id: UUID
     created_at: datetime
+    changed_by: Optional[UserInDB] = None
 
     class Config:
         from_attributes = True
+
 
 class DeviceBase(BaseModel):
     name: str

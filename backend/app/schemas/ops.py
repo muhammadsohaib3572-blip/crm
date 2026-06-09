@@ -69,8 +69,21 @@ class InvoiceBase(BaseModel):
     file_path: Optional[str] = None
     due_date: date
 
+    @field_validator("amount")
+    @classmethod
+    def amount_positive(cls, v: Decimal) -> Decimal:
+        if v <= 0:
+            raise ValueError("Invoice amount must be greater than 0")
+        return v
+
 class InvoiceCreate(InvoiceBase):
-    pass
+    @field_validator("due_date")
+    @classmethod
+    def due_date_not_past(cls, v: date) -> date:
+        from datetime import date as date_type
+        if v < date_type.today():
+            raise ValueError("Invoice due date cannot be in the past")
+        return v
 
 class InvoiceInDB(InvoiceBase):
     id: UUID
@@ -84,6 +97,14 @@ class PaymentBase(BaseModel):
     invoice_id: UUID
     amount: Decimal
     payment_date: date = date.today()
+    payment_method: Optional[str] = None
+
+    @field_validator("amount")
+    @classmethod
+    def amount_positive(cls, v: Decimal) -> Decimal:
+        if v <= 0:
+            raise ValueError("Payment amount must be greater than 0")
+        return v
 
 class PaymentCreate(PaymentBase):
     pass

@@ -29,27 +29,35 @@ async def upload_invoice_file(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(check_role([UserRole.ADMIN, UserRole.MANAGER, UserRole.ACCOUNTS]))
 ):
-    """Upload invoice PDF file"""
+    """Upload invoice file (PDF, JPG, JPEG, PNG — max 10 MB)"""
 
     # Check if invoice exists
     result = await db.execute(select(Invoice).where(Invoice.id == invoice_id))
     invoice = result.scalars().first()
-
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
 
     # Validate file type
-    if not file.filename.endswith(('.pdf', '.PDF')):
-        raise HTTPException(status_code=400, detail="Only PDF files are allowed")
+    allowed_extensions = {'.pdf', '.jpg', '.jpeg', '.png'}
+    file_extension = Path(file.filename).suffix.lower()
+    if file_extension not in allowed_extensions:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid file type '{file_extension}'. Allowed: pdf, jpg, jpeg, png"
+        )
+
+    # Validate file size (10 MB max)
+    content = await file.read()
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="File exceeds 10 MB limit")
 
     # Create unique filename
-    file_extension = Path(file.filename).suffix
     unique_filename = f"{invoice_id}{file_extension}"
     file_path = INVOICE_DIR / unique_filename
 
     # Save file
     with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+        buffer.write(content)
 
     # Update invoice with file path
     invoice.file_path = str(file_path)
@@ -57,13 +65,9 @@ async def upload_invoice_file(
 
     # Audit log
     await ActivityLogService.log_activity(
-        db,
-        current_user.id,
-        current_user.full_name,
-        "UPLOAD",
-        "Invoice",
-        f"Uploaded invoice file for invoice {invoice_id}",
-        entity_id=invoice_id
+        db, current_user.id, current_user.full_name, "FILE_UPLOAD", "Invoice",
+        f"Uploaded file for invoice {invoice_id}", entity_id=invoice_id,
+        role=current_user.role
     )
 
     return {

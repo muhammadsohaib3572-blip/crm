@@ -7,7 +7,7 @@ from app.database.session import get_db
 from app.models.activity_log import ActivityLog
 from app.schemas.activity_log import ActivityLogInDB
 from app.models.user import User, UserRole
-from app.routers.deps import get_current_user, check_role
+from app.routers.deps import get_current_user, get_current_user_for_middleware, check_role
 
 router = APIRouter()
 
@@ -42,7 +42,7 @@ async def get_my_activity(
     skip: int = 0,
     limit: int = 50,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_for_middleware),
 ):
     """Get activity logs for current user"""
     query = select(ActivityLog).where(

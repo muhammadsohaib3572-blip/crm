@@ -17,7 +17,7 @@ class InvoiceStatus(str, enum.Enum):
 class Invoice(Base, IDMixin, TimestampMixin):
     __tablename__ = "invoices"
 
-    client_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("clients.id"), nullable=False)
+    client_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("clients.id"), nullable=False, index=True)
     amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     status: Mapped[InvoiceStatus] = mapped_column(SQLAlchemyEnum(InvoiceStatus), default=InvoiceStatus.DRAFT, nullable=False)
     file_path: Mapped[Optional[str]] = mapped_column(String, nullable=True) # PDF URL
@@ -29,10 +29,11 @@ class Invoice(Base, IDMixin, TimestampMixin):
 class Payment(Base, IDMixin, TimestampMixin):
     __tablename__ = "payments"
 
-    client_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("clients.id"), nullable=False)
+    client_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("clients.id"), nullable=False, index=True)
     invoice_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("invoices.id"), nullable=False)
     amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     payment_date: Mapped[date] = mapped_column(Date, default=date.today)
+    payment_method: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
     invoice: Mapped["Invoice"] = relationship(back_populates="payments")
     client: Mapped["Client"] = relationship("Client", back_populates="payments")

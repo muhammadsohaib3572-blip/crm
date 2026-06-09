@@ -2,9 +2,26 @@ from pydantic import BaseModel
 from uuid import UUID
 from datetime import datetime, date
 from typing import Optional, List
-from app.models.lead import LeadStage
+from app.models.lead import LeadStage, LeadActivityType
 from app.schemas.device import DeviceInDB
 
+# ── Lead Activity Schemas ─────────────────────────────────
+class LeadActivityCreate(BaseModel):
+    activity_type: LeadActivityType
+    scheduled_at: Optional[datetime] = None
+    notes: Optional[str] = None
+
+class LeadActivityInDB(LeadActivityCreate):
+    id: UUID
+    lead_id: UUID
+    created_by_id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# ── Lead Schemas ──────────────────────────────────────────
 class LeadBase(BaseModel):
     name: str
     company_name: str
@@ -40,10 +57,12 @@ class LeadInDB(LeadBase):
     id: UUID
     created_at: datetime
     updated_at: datetime
+    activities: List[LeadActivityInDB] = []
 
     class Config:
         from_attributes = True
 
+# ── Client Schemas ────────────────────────────────────────
 class ClientBase(BaseModel):
     name: str
     company_name: str
@@ -55,6 +74,10 @@ class ClientBase(BaseModel):
     services: Optional[List[str]] = None
     farm_location: Optional[str] = None
     third_party_credentials: Optional[dict] = None
+    contract_value: Optional[float] = 0.0
+    contract_start_date: Optional[date] = None
+    contract_end_date: Optional[date] = None
+    contract_status: Optional[str] = None
 
 class ClientCreate(ClientBase):
     pass
@@ -70,6 +93,11 @@ class ClientUpdate(BaseModel):
     services: Optional[List[str]] = None
     farm_location: Optional[str] = None
     third_party_credentials: Optional[dict] = None
+    contract_value: Optional[float] = None
+    contract_start_date: Optional[date] = None
+    contract_end_date: Optional[date] = None
+    contract_status: Optional[str] = None
+
 
 class ClientInDB(ClientBase):
     id: UUID

@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,15 +29,26 @@ async def get_current_user(
         token_data = TokenPayload(sub=user_id)
     except JWTError:
         raise credentials_exception
-    
+
     user_repo = UserRepository(db)
     user = await user_repo.get_by_id(user_id)
     if user is None:
         raise credentials_exception
     return user
 
+# Dependency for setting user in request.state for middleware
+async def get_current_user_for_middleware(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+) -> User:
+    """Same as get_current_user but sets user in request.state for middleware access"""
+    user = await get_current_user(db, token)
+    request.state.current_user = user
+    return user
+
 def check_role(roles: list[UserRole]):
-    def role_checker(user: User = Depends(get_current_user)):
+    def role_checker(user: User = Depends(get_current_user_for_middleware)):
         if user.role not in roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

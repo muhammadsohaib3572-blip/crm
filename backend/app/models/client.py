@@ -1,8 +1,9 @@
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import String, Float, Text, Date, JSON
+from sqlalchemy import String, Float, Text, Date, JSON, Enum as SQLAlchemyEnum
 from app.models.base import Base, IDMixin, TimestampMixin
 from datetime import date
 from typing import List, TYPE_CHECKING, Optional
+import enum
 
 if TYPE_CHECKING:
     from app.models.device import Device
@@ -10,6 +11,11 @@ if TYPE_CHECKING:
     from app.models.issue import ClientIssue
     from app.models.billing import Invoice, Payment
     from app.models.report import FieldReport
+
+class ContractStatus(str, enum.Enum):
+    ACTIVE = "ACTIVE"
+    EXPIRED = "EXPIRED"
+    PENDING = "PENDING"
 
 class Client(Base, IDMixin, TimestampMixin):
     __tablename__ = "clients"
@@ -24,7 +30,12 @@ class Client(Base, IDMixin, TimestampMixin):
     services: Mapped[Optional[list[str]]] = mapped_column(JSON, nullable=True)
     farm_location: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     third_party_credentials: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
-    
+    contract_value: Mapped[Optional[float]] = mapped_column(Float, default=0.0, nullable=True)
+    # Contract tracking fields
+    contract_start_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    contract_end_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    contract_status: Mapped[Optional[ContractStatus]] = mapped_column(SQLAlchemyEnum(ContractStatus), nullable=True)
+
     # Relationships
     devices: Mapped[List["Device"]] = relationship("Device", back_populates="client", cascade="all, delete-orphan")
     leads: Mapped[List["Lead"]] = relationship("Lead", back_populates="client", cascade="all, delete-orphan")

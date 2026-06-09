@@ -13,6 +13,16 @@ from app.services.activity_log_service import ActivityLogService
 
 router = APIRouter()
 
+# IMPORTANT: /performance must be registered BEFORE /{task_id} to avoid route collision
+@router.get("/performance", tags=["Analytics"])
+async def get_performance(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(check_role([UserRole.ADMIN, UserRole.MANAGER]))
+):
+    repo = TaskRepository(db)
+    return await repo.get_performance_stats()
+
+
 @router.get("/", response_model=List[TaskInDB])
 async def read_tasks(
     db: AsyncSession = Depends(get_db),
@@ -32,7 +42,6 @@ async def create_task(
     repo = TaskRepository(db)
     task = await repo.create(task_in)
 
-    # Audit log
     await ActivityLogService.log_activity(
         db,
         current_user.id,
@@ -59,13 +68,11 @@ async def update_task(
     if not db_task:
         raise HTTPException(status_code=404, detail="Task not found")
     
-    # Only Admin/Manager can reassign, but anyone can update their own task status
     if current_user.role not in [UserRole.ADMIN, UserRole.MANAGER] and db_task.assigned_to_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized to update this task")
         
     updated = await repo.update(db_task, task_in)
 
-    # Audit log
     await ActivityLogService.log_activity(
         db,
         current_user.id,
@@ -104,12 +111,3 @@ async def delete_task(
 
     await repo.delete(db_task)
     return db_task
-
-
-@router.get("/performance", tags=["Analytics"])
-async def get_performance(
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(check_role([UserRole.ADMIN, UserRole.MANAGER]))
-):
-    repo = TaskRepository(db)
-    return await repo.get_performance_stats()

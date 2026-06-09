@@ -5,9 +5,11 @@ import api from '@/services/api/axios';
 
 interface HistoryEntry {
   id: string;
-  status: string;
+  new_status: string;
+  previous_status: string | null;
   notes: string | null;
   created_at: string;
+  changed_by?: { full_name: string } | null;
 }
 
 interface Device {
@@ -83,8 +85,15 @@ export default function DeviceDetails({ id }: { id: string }) {
                   <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
                 </span>
                 <div className="flex flex-col">
-                  <span className="text-sm font-bold text-gray-900">{entry.status.replace(/_/g, ' ')}</span>
-                  <span className="text-xs text-gray-700 font-medium mt-0.5">{new Date(entry.created_at).toLocaleString()}</span>
+                  <span className="text-sm font-bold text-gray-900">
+                    {entry.previous_status ? (
+                      <><span className="text-gray-400">{entry.previous_status.replace(/_/g,' ')}</span> → {entry.new_status.replace(/_/g,' ')}</>
+                    ) : entry.new_status.replace(/_/g,' ')}
+                  </span>
+                  <span className="text-xs text-gray-700 font-medium mt-0.5">
+                    {new Date(entry.created_at).toLocaleString()}
+                    {entry.changed_by && <span className="ml-1 text-gray-500">by {entry.changed_by.full_name}</span>}
+                  </span>
                   {entry.notes && <p className="mt-1 text-sm text-gray-800 italic">"{entry.notes}"</p>}
                 </div>
               </div>
