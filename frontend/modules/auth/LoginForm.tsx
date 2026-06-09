@@ -34,14 +34,12 @@ export default function LoginForm() {
     setIsLoading(true);
     setError(null);
     try {
-      // Send JSON payload for login
-      const loginPayload = {
-        username: data.username,
-        password: data.password,
-      };
+      const payload = new URLSearchParams();
+      payload.append('username', data.username);
+      payload.append('password', data.password);
 
-      const loginRes = await api.post('/auth/login', loginPayload, {
-        headers: { 'Content-Type': 'application/json' },
+      const loginRes = await api.post('/auth/login', payload.toString(), {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       });
 
       const token = loginRes.data.access_token;
@@ -58,7 +56,12 @@ export default function LoginForm() {
 
       router.push('/dashboard');
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Login failed. Please check your credentials.');
+      const detail = err.response?.data?.detail;
+      const msg =
+        typeof detail === 'object' && detail !== null
+          ? JSON.stringify(detail)
+          : detail || 'Login failed. Please check your credentials.';
+      setError(msg);
     } finally {
       setIsLoading(false);
     }

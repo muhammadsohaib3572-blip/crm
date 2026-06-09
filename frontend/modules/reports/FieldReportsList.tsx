@@ -107,9 +107,9 @@ function CreateReportModal({
           </div>
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose}
-              className="flex-1 px-4 py-2 border rounded-lg text-gray-700 hover:bg-gray-50 font-medium">Cancel</button>
+              className="flex-1 px-4 py-2 border rounded-lg text-gray-700 hover:bg-gray-50 font-medium cursor-pointer">Cancel</button>
             <button type="submit" disabled={loading}
-              className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold disabled:opacity-50">
+              className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold disabled:opacity-50 cursor-pointer">
               {loading ? 'Creating...' : 'Create Report'}
             </button>
           </div>
@@ -152,7 +152,7 @@ export default function FieldReportsList() {
         <div className="flex gap-2 flex-wrap">
           {['ALL', 'WEEKLY', 'BI_WEEKLY', 'FIELD_OPERATION', 'QA'].map(t => (
             <button key={t} onClick={() => setTypeFilter(t)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-colors ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-colors cursor-pointer ${
                 typeFilter === t ? 'bg-blue-600 text-white' : 'bg-white border text-gray-700 hover:bg-gray-50'
               }`}>
               {t.replace(/_/g, ' ')}
@@ -161,7 +161,7 @@ export default function FieldReportsList() {
         </div>
         {canCreate && (
           <button onClick={() => setIsModalOpen(true)}
-            className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold shadow-sm text-sm">
+            className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold shadow-sm text-sm cursor-pointer">
             <Plus className="w-4 h-4 mr-2" /> New Report
           </button>
         )}

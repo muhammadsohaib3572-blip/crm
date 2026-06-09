@@ -188,7 +188,7 @@ export default function LeadsKanban() {
         </div>
         {canManage && (
           <button onClick={() => setIsModalOpen(true)}
-            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold shadow-sm text-sm">
+            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold shadow-sm text-sm cursor-pointer">
             <Plus className="w-4 h-4 mr-2" /> Create Lead
           </button>
         )}
@@ -216,7 +216,7 @@ export default function LeadsKanban() {
                     </div>
                     {canDelete && (
                       <button onClick={() => handleDelete(lead.id)}
-                        className="text-red-300 hover:text-red-600 text-xs opacity-0 group-hover:opacity-100 transition-opacity ml-1 flex-shrink-0">
+                        className="text-red-300 hover:text-red-600 text-xs opacity-0 group-hover:opacity-100 transition-opacity ml-1 flex-shrink-0 cursor-pointer">
                         ✕
                       </button>
                     )}
@@ -249,7 +249,7 @@ export default function LeadsKanban() {
                         {(ALLOWED_TRANSITIONS[stage] ?? []).slice(0, 3).map(s => (
                           <button key={s} title={`→ ${s.replace(/_/g,' ')}`}
                             onClick={() => moveLead(lead.id, stage, s)}
-                            className="px-1.5 py-0.5 bg-slate-100 hover:bg-blue-100 hover:text-blue-700 text-gray-500 text-[9px] font-bold rounded transition-colors uppercase">
+                            className="px-1.5 py-0.5 bg-slate-100 hover:bg-blue-100 hover:text-blue-700 text-gray-500 text-[9px] font-bold rounded transition-colors uppercase cursor-pointer">
                             {s.replace(/_/g,' ').split(' ').map(w => w[0]).join('')}
                           </button>
                         ))}
@@ -259,7 +259,7 @@ export default function LeadsKanban() {
                     {canManage && (
                       <button
                         onClick={() => { setSelectedLead(lead); setIsActivityOpen(true); }}
-                        className="text-gray-400 hover:text-blue-600 transition-colors"
+                        className="text-gray-400 hover:text-blue-600 transition-colors cursor-pointer"
                         title="Log activity"
                       >
                         <MessageSquare className="w-3.5 h-3.5" />
