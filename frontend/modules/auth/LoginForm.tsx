@@ -20,6 +20,7 @@ export default function LoginForm() {
   const setAuth = useAuthStore((state) => state.setAuth);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
@@ -33,12 +34,14 @@ export default function LoginForm() {
     setIsLoading(true);
     setError(null);
     try {
-      const payload = new URLSearchParams();
-      payload.append('username', data.username);
-      payload.append('password', data.password);
+      // Send JSON payload for login
+      const loginPayload = {
+        username: data.username,
+        password: data.password,
+      };
 
-      const loginRes = await api.post('/auth/login', payload.toString(), {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      const loginRes = await api.post('/auth/login', loginPayload, {
+        headers: { 'Content-Type': 'application/json' },
       });
 
       const token = loginRes.data.access_token;
@@ -88,30 +91,31 @@ export default function LoginForm() {
 
         <div>
           <label className="block text-sm font-medium text-gray-700">Password</label>
-
-      <input
-        {...register('password')}
-        type={showPassword ? "text" : "password"}
-        className="w-full text-black px-4 py-2 mt-1 border rounded-md focus:ring-blue-500 focus:border-blue-500 outline-none pr-10"
-        placeholder="••••••••"
-      />
-      <button
-        type="button"
-        onClick={() => setShowPassword(!showPassword)}
-        className="absolute inset-y-0 right-0 flex items-center pr-3"
-        aria-label="Toggle password visibility"
-      >
-        {showPassword ? (
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-5.523 0-10-4.477-10-10s4.477-10 10-10a10.05 10.05 0 011.875.175M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-        ) : (
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-5.523 0-10-4.477-10-10s4.477-10 10-10a10.05 10.05 0 011.875.175M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3l18 18" />
-          </svg>
-        )}
-      </button>
+          <div className="relative">
+            <input
+              {...register('password')}
+              type={showPassword ? "text" : "password"}
+              className="w-full text-black px-4 py-2 mt-1 border rounded-md focus:ring-blue-500 focus:border-blue-500 outline-none pr-10"
+              placeholder="••••••••"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute inset-y-0 right-0 flex items-center pr-3"
+              aria-label="Toggle password visibility"
+            >
+              {showPassword ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-5.523 0-10-4.477-10-10s4.477-10 10-10a10.05 10.05 0 011.875.175M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-5.523 0-10-4.477-10-10s4.477-10 10-10a10.05 10.05 0 011.875.175M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3l18 18" />
+                </svg>
+              )}
+            </button>
+          </div>
           {errors.password && (
             <p className="mt-1 text-xs text-red-500">{errors.password.message}</p>
           )}

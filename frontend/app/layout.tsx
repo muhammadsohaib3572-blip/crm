@@ -43,7 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     const isPublic = PUBLIC_PATHS.includes(pathname);
 
     if (!user) {
-      if (!isPublic) router.replace('/login');
+      if (!isPublic && pathname !== '/login') router.replace('/login');
       return;
     }
 

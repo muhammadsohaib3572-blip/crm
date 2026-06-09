@@ -14,7 +14,7 @@ class ActivityLog(Base, IDMixin):
     role: Mapped[Optional[UserRole]] = mapped_column(SQLAlchemyEnum(UserRole), nullable=True)
     action: Mapped[str] = mapped_column(String, nullable=False)  # e.g., "CREATE", "UPDATE", "DELETE", "LOGIN", "LOGOUT"
     entity_type: Mapped[str] = mapped_column(String, nullable=False)  # e.g., "Device", "Client", "Task"
-    entity_id: Mapped[Optional[uuid.UUID]] = mapped_column(nullable=True)
+    entity_id: Mapped[Optional[uuid.UUID]] = mapped_column(String, nullable=True)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     old_values: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     new_values: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
