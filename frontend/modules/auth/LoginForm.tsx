@@ -20,7 +20,6 @@ export default function LoginForm() {
   const setAuth = useAuthStore((state) => state.setAuth);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
@@ -89,7 +88,6 @@ export default function LoginForm() {
 
         <div>
           <label className="block text-sm font-medium text-gray-700">Password</label>
-  const [showPassword, setShowPassword] = useState(false);
 
       <input
         {...register('password')}
