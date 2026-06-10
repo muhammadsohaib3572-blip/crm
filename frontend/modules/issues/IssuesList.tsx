@@ -134,30 +134,31 @@ export default function IssuesList() {
   const [statusFilter, setStatusFilter] = useState('ALL');
 
   const canCreate = user && ['ADMIN', 'MANAGER', 'BUSINESS'].includes(user.role);
+  const canUpdate = user && ['ADMIN', 'MANAGER', 'BUSINESS'].includes(user.role);
 
   const fetchIssues = async () => {
     try {
-      // Fetch all clients then get issues per client
-      const clientsRes = await api.get('/clients');
+      const [issuesRes, clientsRes] = await Promise.all([
+        api.get('/issues'),
+        api.get('/clients'),
+      ]);
       const allClients: Client[] = clientsRes.data;
       setClients(allClients);
       const map: Record<string, Client> = {};
       allClients.forEach(c => { map[c.id] = c; });
       setClientMap(map);
-
-      const allIssues: Issue[] = [];
-      await Promise.all(
-        allClients.map(async (c) => {
-          try {
-            const res = await api.get(`/clients/${c.id}/issues`);
-            allIssues.push(...res.data);
-          } catch { /* skip clients with no issues */ }
-        })
-      );
-      allIssues.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-      setIssues(allIssues);
+      setIssues(issuesRes.data);
     } catch { /* ignore */ }
     finally { setIsLoading(false); }
+  };
+
+  const updateIssueStatus = async (issueId: string, status: string) => {
+    try {
+      await api.patch(`/issues/${issueId}`, { status });
+      setIssues(prev => prev.map(i => i.id === issueId ? { ...i, status: status as Issue['status'] } : i));
+    } catch {
+      console.error('Failed to update issue status');
+    }
   };
 
   useEffect(() => { fetchIssues(); }, []);
@@ -223,9 +224,21 @@ export default function IssuesList() {
                   </span>
                 </td>
                 <td className="px-5 py-4">
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${STATUS_COLORS[issue.status]}`}>
-                    {issue.status.replace(/_/g, ' ')}
-                  </span>
+                  {canUpdate ? (
+                    <select
+                      value={issue.status}
+                      onChange={(e) => updateIssueStatus(issue.id, e.target.value)}
+                      className="text-[10px] font-bold border rounded px-2 py-1 uppercase"
+                    >
+                      <option value="OPEN">Open</option>
+                      <option value="IN_PROGRESS">In Progress</option>
+                      <option value="RESOLVED">Resolved</option>
+                    </select>
+                  ) : (
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${STATUS_COLORS[issue.status]}`}>
+                      {issue.status.replace(/_/g, ' ')}
+                    </span>
+                  )}
                 </td>
                 <td className="px-5 py-4 text-xs text-gray-500">
                   {new Date(issue.created_at).toLocaleDateString()}

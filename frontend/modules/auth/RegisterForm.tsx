@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import api from '@/services/api/axios';
 
-const roles = ['ADMIN','EMPLOYEE','MANAGER','BUSINESS','AGRONOMY','HARDWARE','ACCOUNTS'] as const;
+const roles = ['EMPLOYEE'] as const;
 
 const registerSchema = z.object({
   email: z.string().email('Invalid email address'),

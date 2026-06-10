@@ -6,7 +6,8 @@ from app.database.session import get_db
 from app.repositories.report_repository import ReportRepository
 from app.schemas.report import FieldReportCreate, FieldReportUpdate, FieldReportInDB
 from app.models.user import User, UserRole
-from app.routers.deps import get_current_user, check_role
+from app.routers.deps import check_role
+from app.core.rbac import REPORT_READ_ROLES
 from app.services.activity_log_service import ActivityLogService
 
 router = APIRouter()
@@ -17,7 +18,7 @@ async def read_field_reports(
     skip: int = 0,
     limit: int = 100,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(check_role(REPORT_READ_ROLES))
 ):
     repo = ReportRepository(db)
     if client_id:
@@ -28,7 +29,7 @@ async def read_field_reports(
 async def read_client_field_reports(
     client_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(check_role(REPORT_READ_ROLES))
 ):
     repo = ReportRepository(db)
     return await repo.get_by_client(client_id)

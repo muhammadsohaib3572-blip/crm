@@ -86,7 +86,7 @@ export const NAV_ITEMS: NavItem[] = [
     name: 'Performance',
     href: '/performance',
     iconName: 'BarChart2',
-    roles: ['ADMIN', 'MANAGER'],
+    roles: ['ADMIN', 'MANAGER', 'BUSINESS', 'AGRONOMY', 'HARDWARE', 'ACCOUNTS', 'EMPLOYEE'],
   },
   // ── Notifications ──
   {
@@ -125,7 +125,7 @@ export const ROUTE_ROLES: Record<string, UserRole[]> = {
   '/issues':         ['ADMIN', 'MANAGER', 'BUSINESS'],
   '/billing':        ['ADMIN', 'MANAGER', 'ACCOUNTS'],
   '/tasks':          ['ADMIN', 'MANAGER', 'BUSINESS', 'AGRONOMY', 'HARDWARE', 'ACCOUNTS', 'EMPLOYEE'],
-  '/performance':    ['ADMIN', 'MANAGER'],
+  '/performance':    ['ADMIN', 'MANAGER', 'BUSINESS', 'AGRONOMY', 'HARDWARE', 'ACCOUNTS', 'EMPLOYEE'],
   '/notifications':  ['ADMIN', 'MANAGER', 'BUSINESS', 'AGRONOMY', 'HARDWARE', 'ACCOUNTS', 'EMPLOYEE'],
   '/activity-logs':  ['ADMIN', 'MANAGER'],
   '/users':          ['ADMIN', 'MANAGER'],

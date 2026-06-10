@@ -56,6 +56,17 @@ class TaskRepository:
         await self.db.delete(db_task)
         await self.db.commit()
 
+    def _format_performance_row(self, full_name, role, total, completed, pending, in_progress):
+        return {
+            "full_name": full_name,
+            "role": role,
+            "total": total,
+            "completed": completed,
+            "pending_tasks": pending,
+            "in_progress_tasks": in_progress,
+            "score": round((completed / total * 100) if total > 0 else 0, 1),
+        }
+
     async def get_performance_stats(self):
         from app.models.user import User
         result = await self.db.execute(
@@ -63,18 +74,34 @@ class TaskRepository:
                 User.full_name,
                 User.role,
                 func.count(Task.id).label("total"),
-                func.count(Task.id).filter(Task.status == TaskStatus.COMPLETED).label("completed")
+                func.count(Task.id).filter(Task.status == TaskStatus.COMPLETED).label("completed"),
+                func.count(Task.id).filter(Task.status == TaskStatus.PENDING).label("pending"),
+                func.count(Task.id).filter(Task.status == TaskStatus.IN_PROGRESS).label("in_progress"),
             )
             .join(User, Task.assigned_to_id == User.id)
             .group_by(User.id, User.full_name, User.role)
         )
         return [
-            {
-                "full_name": row[0],
-                "role": row[1],
-                "total": row[2],
-                "completed": row[3],
-                "score": (row[3] / row[2] * 100) if row[2] > 0 else 0
-            }
+            self._format_performance_row(row[0], row[1], row[2], row[3], row[4], row[5])
             for row in result.all()
         ]
+
+    async def get_user_performance_stats(self, user_id: UUID):
+        from app.models.user import User
+        result = await self.db.execute(
+            select(
+                User.full_name,
+                User.role,
+                func.count(Task.id).label("total"),
+                func.count(Task.id).filter(Task.status == TaskStatus.COMPLETED).label("completed"),
+                func.count(Task.id).filter(Task.status == TaskStatus.PENDING).label("pending"),
+                func.count(Task.id).filter(Task.status == TaskStatus.IN_PROGRESS).label("in_progress"),
+            )
+            .join(User, Task.assigned_to_id == User.id)
+            .where(User.id == user_id)
+            .group_by(User.id, User.full_name, User.role)
+        )
+        row = result.first()
+        if not row:
+            return []
+        return [self._format_performance_row(row[0], row[1], row[2], row[3], row[4], row[5])]

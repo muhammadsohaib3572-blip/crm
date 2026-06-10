@@ -11,7 +11,8 @@ from pydantic import BaseModel
 from app.models.user import User, UserRole
 from app.models.device import DeviceStatus
 from app.models.device import DeviceHistory
-from app.routers.deps import get_current_user, get_current_user_for_middleware, check_role
+from app.routers.deps import get_current_user_for_middleware, check_role
+from app.core.rbac import DEVICE_READ_ROLES, DEVICE_WRITE_ROLES
 from app.services.activity_log_service import ActivityLogService
 
 router = APIRouter()
@@ -21,7 +22,7 @@ async def read_devices(
     skip: int = 0,
     limit: int = 100,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user_for_middleware)
+    current_user: User = Depends(check_role(DEVICE_READ_ROLES))
 ):
     repo = DeviceRepository(db)
     return await repo.get_all(skip=skip, limit=limit)
@@ -29,7 +30,7 @@ async def read_devices(
 # New endpoint: Get all possible device statuses (must be before any {device_id} routes)
 @router.get("/statuses", response_model=List[str])
 async def get_device_statuses(
-    current_user: User = Depends(get_current_user_for_middleware)
+    current_user: User = Depends(check_role(DEVICE_READ_ROLES))
 ) -> List[str]:
     """Return a list of all DeviceStatus enum values.
     The endpoint is public to authenticated users; no special role required.
@@ -40,7 +41,7 @@ async def get_device_statuses(
 async def create_device(
     device_in: DeviceCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(check_role([UserRole.ADMIN, UserRole.MANAGER, UserRole.HARDWARE]))
+    current_user: User = Depends(check_role(DEVICE_WRITE_ROLES))
 ):
     repo = DeviceRepository(db)
     device = await repo.create(device_in, current_user.id)
@@ -62,7 +63,7 @@ async def create_device(
 async def read_device(
     device_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user_for_middleware)
+    current_user: User = Depends(check_role(DEVICE_READ_ROLES))
 ):
     repo = DeviceRepository(db)
     device = await repo.get_by_id(device_id)
@@ -74,7 +75,7 @@ async def read_device(
 async def get_device_history(
     device_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user_for_middleware)
+    current_user: User = Depends(check_role(DEVICE_READ_ROLES))
 ):
     """Get complete device lifecycle history"""
     query = select(DeviceHistory).where(
@@ -90,7 +91,7 @@ async def get_device_history(
 async def get_device_timeline(
     device_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user_for_middleware)
+    current_user: User = Depends(check_role(DEVICE_READ_ROLES))
 ):
     timeline = await DeviceService.get_device_timeline(db, str(device_id))
     return timeline
@@ -159,6 +160,8 @@ from pydantic import BaseModel
 class DeviceStatusChange(BaseModel):
     new_status: DeviceStatus
     notes: str | None = None
+    client_id: UUID | None = None
+    installation_location: str | None = None
 
 @router.patch("/{device_id}/status", response_model=DeviceInDB)
 async def change_device_status(
@@ -167,21 +170,24 @@ async def change_device_status(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_for_middleware)
 ):
-    # Only ADMIN, MANAGER, HARDWARE can change status directly.
-    # AGRONOMY may change status only when assigned to the device.
+    db_device = await db.get(Device, device_id)
+    if not db_device:
+        raise HTTPException(status_code=404, detail="Device not found")
+
     if current_user.role not in [UserRole.ADMIN, UserRole.MANAGER, UserRole.HARDWARE] and \
-            current_user.id not in [
-                # Assigned owners can also change status for their devices
-                (await db.get(Device, device_id)).assigned_hardware_id,
-                (await db.get(Device, device_id)).assigned_agronomist_id,
-            ]:
+            current_user.id not in [db_device.assigned_hardware_id, db_device.assigned_agronomist_id]:
         raise HTTPException(status_code=403, detail="Not authorized to change device status")
 
-    device = await DeviceService.change_device_status(
-        db=db,
-        device_id=str(device_id),
-        new_status=status_change.new_status,
-        changed_by_user=current_user,
-        notes=status_change.notes,
-    )
+    try:
+        device = await DeviceService.change_device_status(
+            db=db,
+            device_id=str(device_id),
+            new_status=status_change.new_status,
+            changed_by_user=current_user,
+            notes=status_change.notes,
+            client_id=status_change.client_id,
+            installation_location=status_change.installation_location,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     return device

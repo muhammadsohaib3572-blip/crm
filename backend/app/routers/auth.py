@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Body, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Body, Depends, HTTPException, status, Request, Header
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func
 from app.database.session import get_db
 from app.repositories.user_repository import UserRepository
 from app.services.auth_service import AuthService
@@ -8,10 +9,10 @@ from app.services.refresh_token_service import RefreshTokenService
 from app.services.activity_log_service import ActivityLogService
 from app.schemas.user import Token, UserInDB, UserCreate
 from app.routers.deps import get_current_user_for_middleware
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.core.security import get_password_hash
-from jose import jwt, JWTError
 from app.core.config import settings
+from app.core.rbac import PUBLIC_REGISTER_ROLES
 
 router = APIRouter()
 
@@ -20,10 +21,21 @@ async def register(
     user_in: UserCreate,
     db: AsyncSession = Depends(get_db)
 ):
-    """Register a new user"""
+    """Register a new user (public registration limited to EMPLOYEE when enabled)."""
+    if not settings.ALLOW_PUBLIC_REGISTER:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Public registration is disabled. Contact an administrator."
+        )
+
+    if user_in.role not in PUBLIC_REGISTER_ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Public registration only allows EMPLOYEE role."
+        )
+
     user_repo = UserRepository(db)
 
-    # Check if user already exists
     existing_user = await user_repo.get_by_email(user_in.email)
     if existing_user:
         raise HTTPException(
@@ -31,11 +43,10 @@ async def register(
             detail="Email already registered"
         )
 
-    # Create new user
     user = User(
         email=user_in.email,
         full_name=user_in.full_name,
-        role=user_in.role,
+        role=UserRole.EMPLOYEE,
         is_active=user_in.is_active,
         password_hash=get_password_hash(user_in.password)
     )
@@ -151,12 +162,24 @@ async def create_admin(
     email: str,
     password: str,
     full_name: str,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    x_setup_secret: str | None = Header(default=None, alias="X-Setup-Secret"),
 ):
-    """Create an admin user (for initial setup)"""
+    """Create an admin user — only when no admin exists, or with SETUP_SECRET header."""
+    admin_count = await db.execute(
+        select(func.count(User.id)).where(User.role == UserRole.ADMIN)
+    )
+    has_admin = (admin_count.scalar() or 0) > 0
+
+    if has_admin:
+        if not settings.SETUP_SECRET or x_setup_secret != settings.SETUP_SECRET:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Admin already exists. Provide valid X-Setup-Secret header."
+            )
+
     user_repo = UserRepository(db)
 
-    # Check if user already exists
     existing_user = await user_repo.get_by_email(email)
     if existing_user:
         raise HTTPException(
@@ -164,11 +187,10 @@ async def create_admin(
             detail="Email already registered"
         )
 
-    # Create new admin user
     user = User(
         email=email,
         full_name=full_name,
-        role="ADMIN",
+        role=UserRole.ADMIN,
         is_active=True,
         password_hash=get_password_hash(password)
     )

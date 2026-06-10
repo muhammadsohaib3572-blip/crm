@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import api from '@/services/api/axios';
 import Link from 'next/link';
 import DeviceFormModal from './DeviceFormModal';
+import { useAuthStore } from '@/store/auth/useAuthStore';
 import { Trash2, Edit, Plus } from 'lucide-react';
 
 interface Device {
@@ -24,6 +25,9 @@ const statusColors: Record<string, string> = {
 };
 
 export default function DeviceList() {
+  const { user } = useAuthStore();
+  const canManage = user && ['ADMIN', 'MANAGER', 'HARDWARE'].includes(user.role);
+  const canDelete = user && ['ADMIN', 'MANAGER'].includes(user.role);
   const [devices, setDevices] = useState<Device[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -68,14 +72,16 @@ export default function DeviceList() {
 
   return (
     <>
-      <div className="flex justify-end mb-6">
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-bold shadow-sm cursor-pointer"
-        >
-          <Plus className="w-4 h-4 mr-2" /> Add New Device
-        </button>
-      </div>
+      {canManage && (
+        <div className="flex justify-end mb-6">
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-bold shadow-sm cursor-pointer"
+          >
+            <Plus className="w-4 h-4 mr-2" /> Add New Device
+          </button>
+        </div>
+      )}
 
       <div className="overflow-x-auto bg-white rounded-lg shadow border border-gray-100">
         <table className="min-w-full divide-y divide-gray-200">
@@ -107,20 +113,24 @@ export default function DeviceList() {
                   <Link href={`/devices/${device.id}`} className="text-blue-600 hover:text-blue-800 font-bold transition-colors">
                     View
                   </Link>
-                  <button
-                    onClick={() => handleEdit(device)}
-                    className="text-slate-600 hover:text-blue-600 transition-colors cursor-pointer"
-                    title="Edit"
-                  >
-                    <Edit className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(device.id)}
-                    className="text-slate-600 hover:text-red-600 transition-colors cursor-pointer"
-                    title="Delete"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  {canManage && (
+                    <button
+                      onClick={() => handleEdit(device)}
+                      className="text-slate-600 hover:text-blue-600 transition-colors cursor-pointer"
+                      title="Edit"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </button>
+                  )}
+                  {canDelete && (
+                    <button
+                      onClick={() => handleDelete(device.id)}
+                      className="text-slate-600 hover:text-red-600 transition-colors cursor-pointer"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

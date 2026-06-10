@@ -243,7 +243,6 @@ For verification and inventory records.
 ### Backend
 
 * Python FastAPI
-* Django
 
 ### Database
 

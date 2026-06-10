@@ -48,6 +48,11 @@ interface Client {
   address: string | null;
   contact_info: string | null;
   onboarding_date: string | null;
+  crop_cycle_end_date: string | null;
+  farm_location: string | null;
+  services: string[] | null;
+  contract_value: number | null;
+  contract_status: string | null;
   devices: Device[];
 }
 
@@ -136,6 +141,33 @@ export default function ClientProfile({ id }: { id: string }) {
               <span className="text-gray-700 font-medium">Onboarded:</span>
               <span className="text-gray-900">{client.onboarding_date ? new Date(client.onboarding_date).toLocaleDateString() : 'N/A'}</span>
             </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-700 font-medium">Crop Cycle Ends:</span>
+              <span className="text-gray-900">{client.crop_cycle_end_date ? new Date(client.crop_cycle_end_date).toLocaleDateString() : 'N/A'}</span>
+            </div>
+            <div className="flex flex-col text-sm">
+              <span className="text-gray-700 font-medium">Farm Location:</span>
+              <span className="text-gray-900 mt-1">{client.farm_location || 'N/A'}</span>
+            </div>
+            {client.services && client.services.length > 0 && (
+              <div className="flex flex-wrap gap-1 pt-2">
+                {client.services.map((s) => (
+                  <span key={s} className="text-[10px] font-bold px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full">{s}</span>
+                ))}
+              </div>
+            )}
+            {client.contract_value != null && (
+              <div className="flex justify-between text-sm pt-2 border-t">
+                <span className="text-gray-700 font-medium">Contract Value:</span>
+                <span className="text-gray-900 font-bold">${Number(client.contract_value).toLocaleString()}</span>
+              </div>
+            )}
+            {client.contract_status && (
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-700 font-medium">Contract Status:</span>
+                <span className="text-gray-900 font-bold uppercase">{client.contract_status}</span>
+              </div>
+            )}
           </div>
         </div>
 

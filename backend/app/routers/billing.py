@@ -10,7 +10,8 @@ from app.schemas.ops import InvoiceCreate, InvoiceInDB, PaymentCreate, PaymentIn
 from app.models.user import User, UserRole
 from app.models.billing import Invoice, Payment, InvoiceStatus
 from app.models.client import Client
-from app.routers.deps import get_current_user_for_middleware, check_role
+from app.routers.deps import check_role
+from app.core.rbac import BILLING_READ_ROLES, BILLING_WRITE_ROLES
 from app.services.activity_log_service import ActivityLogService
 
 router = APIRouter()
@@ -19,7 +20,7 @@ router = APIRouter()
 async def read_invoices(
     client_id: UUID = None,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(check_role([UserRole.ADMIN, UserRole.MANAGER, UserRole.ACCOUNTS, UserRole.BUSINESS]))
+    current_user: User = Depends(check_role(BILLING_READ_ROLES))
 ):
     repo = BillingRepository(db)
     return await repo.get_invoices(client_id)
@@ -28,7 +29,7 @@ async def read_invoices(
 async def create_invoice(
     invoice_in: InvoiceCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(check_role([UserRole.ADMIN, UserRole.MANAGER, UserRole.ACCOUNTS]))
+    current_user: User = Depends(check_role(BILLING_WRITE_ROLES))
 ):
     repo = BillingRepository(db)
     invoice = await repo.create_invoice(invoice_in)
@@ -44,7 +45,7 @@ async def create_invoice(
 async def read_payments(
     client_id: UUID = None,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(check_role([UserRole.ADMIN, UserRole.MANAGER, UserRole.ACCOUNTS]))
+    current_user: User = Depends(check_role(BILLING_READ_ROLES))
 ):
     query = select(Payment).order_by(Payment.created_at.desc())
     if client_id:
@@ -56,7 +57,7 @@ async def read_payments(
 async def create_payment(
     payment_in: PaymentCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(check_role([UserRole.ADMIN, UserRole.MANAGER, UserRole.ACCOUNTS]))
+    current_user: User = Depends(check_role(BILLING_WRITE_ROLES))
 ):
     if payment_in.amount <= 0:
         raise HTTPException(status_code=422, detail="Payment amount must be positive")
@@ -86,7 +87,7 @@ async def create_payment(
 @router.get("/overdue", response_model=List[InvoiceInDB])
 async def get_overdue_invoices(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(check_role([UserRole.ADMIN, UserRole.MANAGER, UserRole.ACCOUNTS]))
+    current_user: User = Depends(check_role(BILLING_READ_ROLES))
 ):
     query = select(Invoice).where(Invoice.status == InvoiceStatus.OVERDUE).order_by(Invoice.due_date.asc())
     result = await db.execute(query)
@@ -96,7 +97,7 @@ async def get_overdue_invoices(
 async def get_balance(
     client_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user_for_middleware),
+    current_user: User = Depends(check_role(BILLING_READ_ROLES)),
 ):
     repo = BillingRepository(db)
     balance = await repo.get_client_balance(client_id)
@@ -106,7 +107,7 @@ async def get_balance(
 async def get_client_arrears(
     client_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(check_role([UserRole.ADMIN, UserRole.MANAGER, UserRole.ACCOUNTS, UserRole.BUSINESS]))
+    current_user: User = Depends(check_role(BILLING_READ_ROLES))
 ):
 
     invoice_query = select(func.sum(Invoice.amount)).where(
@@ -142,7 +143,7 @@ async def get_client_ledger(
     skip: int = 0,
     limit: int = 50,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(check_role([UserRole.ADMIN, UserRole.MANAGER, UserRole.ACCOUNTS]))
+    current_user: User = Depends(check_role(BILLING_READ_ROLES))
 ):
     invoices_result = await db.execute(
         select(Invoice).where(Invoice.client_id == client_id).order_by(Invoice.created_at.desc())

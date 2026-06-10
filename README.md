@@ -148,8 +148,8 @@ alembic upgrade head
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-The API will be available at `http://localhost:8000`
-API Documentation (Swagger): `http://localhost:8000/docs`
+<!-- The API will be available at `http://localhost:8000` -->
+<!-- API Documentation (Swagger): `http://localhost:8000/docs` -->
 
 ### Frontend Setup
 
@@ -174,7 +174,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 npm run dev
 ```
 
-The frontend will be available at `http://localhost:3000`
+<!-- The frontend will be available at `http://localhost:3000` -->
 
 ## 📡 API Endpoints
 

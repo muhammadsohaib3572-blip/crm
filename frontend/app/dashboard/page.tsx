@@ -39,10 +39,11 @@ function BusinessDashboard({ data }: { data: any }) {
   const byStage = Object.entries(data?.leads_by_stage ?? {}).map(([name, value]) => ({ name: name.replace(/_/g,' '), value: Number(value) }));
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <StatCard title="Active Leads" value={data?.active_leads ?? 0} icon={TrendingUp} color="text-blue-600" bg="bg-blue-100" />
         <StatCard title="Conversion Rate" value={`${data?.conversion_rate ?? 0}%`} icon={BarChart2} color="text-green-600" bg="bg-green-100" />
-        <StatCard title="Activities Logged" value={data?.total_activities ?? 0} icon={CheckSquare} color="text-purple-600" bg="bg-purple-100" />
+        <StatCard title="Follow-ups Today" value={data?.followups_due_today ?? 0} icon={CheckSquare} color="text-purple-600" bg="bg-purple-100" />
+        <StatCard title="Meetings This Week" value={data?.meetings_this_week ?? 0} icon={CheckSquare} color="text-indigo-600" bg="bg-indigo-100" />
         <StatCard title="Total Clients" value={data?.total_clients ?? 0} icon={Users} color="text-orange-600" bg="bg-orange-100" />
       </div>
       {byStage.length > 0 && (

@@ -1,9 +1,9 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
-from sqlalchemy import desc
+from sqlalchemy import desc, update
 from app.models.client import Client
-from app.models.device import Device, DeviceHistory
+from app.models.device import Device, DeviceHistory, DeviceStatus
 from app.schemas.client import ClientCreate, ClientUpdate
 from uuid import UUID
 from typing import List, Optional
@@ -32,6 +32,7 @@ class ClientRepository:
             select(Client)
             .options(
                 selectinload(Client.leads),
+                selectinload(Client.devices),
             )
             .where(Client.id == client_id)
         )
@@ -44,6 +45,12 @@ class ClientRepository:
         return await self.get_by_id(db_client.id)
 
     async def delete(self, db_client: Client) -> None:
+        # Unlink devices: set client_id=NULL and status=BACK_AT_OFFICE (do not delete devices)
+        await self.db.execute(
+            update(Device)
+            .where(Device.client_id == db_client.id)
+            .values(client_id=None, status=DeviceStatus.BACK_AT_OFFICE)
+        )
         await self.db.delete(db_client)
         await self.db.commit()
 

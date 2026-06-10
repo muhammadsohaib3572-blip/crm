@@ -4,8 +4,10 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy import desc
 from app.models.device import Device, DeviceHistory, DeviceStatus
 from app.schemas.device import DeviceCreate, DeviceUpdate
+from app.services.device_service import DeviceService
 from uuid import UUID
 from typing import List, Optional
+from fastapi import HTTPException
 
 class DeviceRepository:
     def __init__(self, db: AsyncSession):
@@ -58,10 +60,23 @@ class DeviceRepository:
 
     async def update(self, db_device: Device, device_in: DeviceUpdate, user_id: UUID) -> Device:
         update_data = device_in.model_dump(exclude_unset=True)
-
-        # Check if status is changing to log it
         old_status = db_device.status
         new_status = update_data.get("status")
+        effective_client_id = update_data.get("client_id", db_device.client_id)
+
+        if new_status and new_status != old_status:
+            try:
+                await DeviceService._validate_status_transition(old_status, new_status)
+                DeviceService.validate_installed_client(effective_client_id, new_status)
+            except ValueError as e:
+                raise HTTPException(status_code=422, detail=str(e))
+
+        final_status = new_status if new_status else db_device.status
+        if final_status == DeviceStatus.INSTALLED:
+            try:
+                DeviceService.validate_installed_client(effective_client_id, DeviceStatus.INSTALLED)
+            except ValueError as e:
+                raise HTTPException(status_code=422, detail=str(e))
 
         for field, value in update_data.items():
             setattr(db_device, field, value)
@@ -77,4 +92,4 @@ class DeviceRepository:
             self.db.add(history)
 
         await self.db.commit()
-        return await self.get_by_id(db_device.id)
+        return await self.get_by_id(db_device.id)

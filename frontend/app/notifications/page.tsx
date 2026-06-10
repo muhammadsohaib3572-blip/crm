@@ -1,8 +1,10 @@
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import NotificationFeed from '@/modules/notifications/NotificationFeed';
 
 export default function NotificationsPage() {
   return (
+    <ProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'BUSINESS', 'AGRONOMY', 'HARDWARE', 'ACCOUNTS', 'EMPLOYEE']}>
     <DashboardLayout>
       <div className="p-4 space-y-6 sm:p-6 lg:p-8">
         <div className="flex items-center justify-between">
@@ -14,5 +16,6 @@ export default function NotificationsPage() {
         <NotificationFeed />
       </div>
     </DashboardLayout>
+    </ProtectedRoute>
   );
 }

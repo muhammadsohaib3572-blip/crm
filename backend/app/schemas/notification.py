@@ -11,8 +11,7 @@ class NotificationBase(BaseModel):
     link: Optional[str] = None
 
 class NotificationCreate(NotificationBase):
-    """Schema for creating a notification. user_id is set from the authenticated user."""
-    pass
+    user_id: UUID
 
 
 

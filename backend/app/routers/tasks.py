@@ -4,8 +4,11 @@ from sqlalchemy import select
 from typing import List
 from uuid import UUID
 from app.database.session import get_db
-from app.models.task import Task
+from app.models.task import Task, TaskStatus
 from app.repositories.task_repository import TaskRepository
+from app.services.notification_service import NotificationService
+from app.schemas.notification import NotificationCreate
+from app.models.notification import NotificationType
 from app.schemas.ops import TaskCreate, TaskUpdate, TaskInDB
 from app.models.user import User, UserRole
 from app.routers.deps import get_current_user, check_role
@@ -16,11 +19,16 @@ router = APIRouter()
 # IMPORTANT: /performance must be registered BEFORE /{task_id} to avoid route collision
 @router.get("/performance", tags=["Analytics"])
 async def get_performance(
+    user_id: UUID | None = None,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(check_role([UserRole.ADMIN, UserRole.MANAGER]))
+    current_user: User = Depends(get_current_user)
 ):
     repo = TaskRepository(db)
-    return await repo.get_performance_stats()
+    if current_user.role in [UserRole.ADMIN, UserRole.MANAGER]:
+        if user_id:
+            return await repo.get_user_performance_stats(user_id)
+        return await repo.get_performance_stats()
+    return await repo.get_user_performance_stats(current_user.id)
 
 
 @router.get("/", response_model=List[TaskInDB])
@@ -37,10 +45,27 @@ async def read_tasks(
 async def create_task(
     task_in: TaskCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(check_role([UserRole.ADMIN, UserRole.MANAGER, UserRole.BUSINESS, UserRole.ACCOUNTS, UserRole.HARDWARE]))
+    current_user: User = Depends(check_role([
+        UserRole.ADMIN, UserRole.MANAGER, UserRole.BUSINESS,
+        UserRole.ACCOUNTS, UserRole.HARDWARE, UserRole.AGRONOMY,
+    ]))
 ):
     repo = TaskRepository(db)
     task = await repo.create(task_in)
+
+    try:
+        await NotificationService.create_notification(
+            db,
+            NotificationCreate(
+                user_id=task.assigned_to_id,
+                title="New Task Assigned",
+                message=f"You have been assigned: {task.title}",
+                type=NotificationType.INFO,
+                link="/tasks",
+            ),
+        )
+    except Exception:
+        pass
 
     await ActivityLogService.log_activity(
         db,
@@ -70,7 +95,34 @@ async def update_task(
     
     if current_user.role not in [UserRole.ADMIN, UserRole.MANAGER] and db_task.assigned_to_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized to update this task")
-        
+
+    if task_in.status and task_in.status != db_task.status:
+        allowed = {
+            TaskStatus.PENDING: [TaskStatus.IN_PROGRESS, TaskStatus.COMPLETED],
+            TaskStatus.IN_PROGRESS: [TaskStatus.COMPLETED],
+            TaskStatus.COMPLETED: [],
+        }
+        if current_user.role not in [UserRole.ADMIN, UserRole.MANAGER]:
+            if task_in.status not in allowed.get(db_task.status, []):
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Invalid task status transition from {db_task.status.value} to {task_in.status.value}"
+                )
+        old_status = db_task.status.value
+        updated = await repo.update(db_task, task_in)
+        await ActivityLogService.log_activity(
+            db,
+            current_user.id,
+            current_user.full_name,
+            "STATUS_CHANGE",
+            "Task",
+            f"Task '{updated.title}' status changed",
+            entity_id=updated.id,
+            previous_value=old_status,
+            new_value=task_in.status.value,
+        )
+        return updated
+
     updated = await repo.update(db_task, task_in)
 
     await ActivityLogService.log_activity(

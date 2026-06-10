@@ -44,6 +44,7 @@ interface Lead {
   email: string | null;
   phone: string | null;
   quotation_amount: number | null;
+  client_id: string | null;
   activities: Activity[];
 }
 
@@ -170,6 +171,17 @@ export default function LeadsKanban() {
     } catch { /* ignore */ }
   };
 
+  const handleConvert = async (leadId: string) => {
+    if (!confirm('Convert this lead to an active client?')) return;
+    try {
+      await api.post(`/leads/${leadId}/convert`);
+      await fetchLeads();
+    } catch (err: any) {
+      setMoveError(err.response?.data?.detail || 'Failed to convert lead');
+      setTimeout(() => setMoveError(null), 4000);
+    }
+  };
+
   if (isLoading) return <div className="p-8 text-center text-gray-500">Loading pipeline...</div>;
 
   return (
@@ -240,6 +252,15 @@ export default function LeadsKanban() {
                         <span className="text-[10px] text-gray-400">+{lead.activities.length - 2} more</span>
                       )}
                     </div>
+                  )}
+
+                  {stage === 'WON' && canManage && !lead.client_id && (
+                    <button
+                      onClick={() => handleConvert(lead.id)}
+                      className="w-full mb-2 py-1 text-[10px] font-bold bg-green-600 text-white rounded hover:bg-green-700"
+                    >
+                      Convert to Client
+                    </button>
                   )}
 
                   <div className="border-t border-slate-50 pt-2.5 mt-2 flex items-center justify-between">

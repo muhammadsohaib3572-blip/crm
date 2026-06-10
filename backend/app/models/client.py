@@ -37,7 +37,7 @@ class Client(Base, IDMixin, TimestampMixin):
     contract_status: Mapped[Optional[ContractStatus]] = mapped_column(SQLAlchemyEnum(ContractStatus), nullable=True)
 
     # Relationships
-    devices: Mapped[List["Device"]] = relationship("Device", back_populates="client", cascade="all, delete-orphan", lazy="selectin")
+    devices: Mapped[List["Device"]] = relationship("Device", back_populates="client", lazy="selectin")
     leads: Mapped[List["Lead"]] = relationship("Lead", back_populates="client", cascade="all, delete-orphan")
     issues: Mapped[List["ClientIssue"]] = relationship("ClientIssue", back_populates="client", cascade="all, delete-orphan")
     invoices: Mapped[List["Invoice"]] = relationship("Invoice", back_populates="client", cascade="all, delete-orphan")

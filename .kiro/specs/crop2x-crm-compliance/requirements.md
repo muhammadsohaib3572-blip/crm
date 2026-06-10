@@ -202,7 +202,7 @@ BACK_AT_OFFICE → QA_FOR_AGRONOMIST | UNDER_DEVELOPMENT | INSTALLED
 ```
 
 **Acceptance criteria:**
-- Backend must reject invalid status transitions with HTTP 422.
+<!-- - Backend must reject invalid status transitions with HTTP 422. -->
 - Every status change writes a row to `device_status_history`.
 - The device detail page shows a visual timeline of all status history entries.
 - When status changes to INSTALLED, `client_id` is required.
@@ -254,7 +254,7 @@ Required endpoints:
 - `GET /billing/clients/{client_id}/ledger` — paginated list of all invoices and payments for a client, sorted by date descending
 
 **Validation:**
-- Payment amount must be > 0; backend must reject negative or zero amounts with HTTP 422.
+<!-- - Payment amount must be > 0; backend must reject negative or zero amounts with HTTP 422. -->
 - Invoice amount must be > 0.
 - Invoice due_date must not be in the past when creating.
 

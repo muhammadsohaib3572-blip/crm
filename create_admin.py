@@ -1,6 +1,6 @@
 import requests
 
-url = 'http://localhost:8000/auth/create-admin'
+url = 'https://crm-production-e6ff.up.railway.app/auth/create-admin'
 payload = {
     'email': 'admin@example.com',
     'password': 'AdminPass123!',

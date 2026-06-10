@@ -21,6 +21,7 @@ export default function ClientList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
 
+  const canManage = user && ['ADMIN', 'MANAGER', 'BUSINESS'].includes(user.role);
   const canDelete = user && ['ADMIN', 'MANAGER'].includes(user.role);
 
   useEffect(() => {
@@ -62,14 +63,16 @@ export default function ClientList() {
 
   return (
     <>
-      <div className="flex justify-end mb-6">
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors font-bold shadow-sm cursor-pointer"
-        >
-          <Plus className="w-4 h-4 mr-2" /> Add New Client
-        </button>
-      </div>
+      {canManage && (
+        <div className="flex justify-end mb-6">
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors font-bold shadow-sm cursor-pointer"
+          >
+            <Plus className="w-4 h-4 mr-2" /> Add New Client
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {clients.map((client) => (
@@ -80,13 +83,15 @@ export default function ClientList() {
                 <p className="text-gray-500 text-sm font-medium">{client.company_name}</p>
               </div>
               <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button
-                  onClick={() => handleEdit(client)}
-                  className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors cursor-pointer"
-                  title="Edit Client"
-                >
-                  <Edit className="w-4 h-4" />
-                </button>
+                {canManage && (
+                  <button
+                    onClick={() => handleEdit(client)}
+                    className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors cursor-pointer"
+                    title="Edit Client"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </button>
+                )}
                 {canDelete && (
                   <button
                     onClick={() => handleDelete(client.id)}

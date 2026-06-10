@@ -40,9 +40,9 @@
 - **Activity Logs** — har action ka audit trail
 
 **System ka naam:** Crop2X Internal CRM & Operations Management System
-**Backend URL:** `http://localhost:8000`
+<!-- **Backend URL:** `http://localhost:8000`
 **Frontend URL:** `http://localhost:3000`
-**API Docs (Swagger):** `http://localhost:8000/docs`
+**API Docs (Swagger):** `http://localhost:8000/docs` -->
 
 ---
 
@@ -67,7 +67,7 @@
 | **TypeScript** | Type-safe JavaScript |
 | **Tailwind CSS v4** | Styling |
 | **Zustand** | State management (auth store) |
-| **Axios** | HTTP requests (API calls) |
+<!-- | **Axios** | HTTP requests (API calls) | -->
 | **React Hook Form + Zod** | Form validation |
 | **Recharts** | Charts aur graphs |
 | **Lucide React** | Icons |
@@ -83,7 +83,7 @@
 ```
 User (Browser)
      |
-     | HTTP Request
+    
      v
 Frontend (Next.js - Port 3000)
      |
@@ -426,7 +426,7 @@ Step 6: User /login par redirect hota hai
 ### Request Processing Pipeline
 
 ```
-HTTP Request aata hai
+<!-- HTTP Request aata hai -->
         ↓
 ErrorHandlerMiddleware (errors catch karta hai)
         ↓
@@ -704,7 +704,7 @@ DRAFT → SENT → PAID
 
 ## 10. API Endpoints
 
-> **Base URL:** `http://localhost:8000`
+<!-- > **Base URL:** `http://localhost:8000` -->
 > **Auth:** Sab endpoints (siwa register/login/create-admin ke) mein `Authorization: Bearer <token>` header chahiye.
 
 ---
@@ -769,7 +769,7 @@ password=securepassword123
 
 **Postman mein kese test karein:**
 1. Method: POST
-2. URL: `http://localhost:8000/auth/login`
+<!-- 2. URL: `http://localhost:8000/auth/login` -->
 3. Body tab → `x-www-form-urlencoded`
 4. Key: `username`, Value: `admin@example.com`
 5. Key: `password`, Value: `yourpassword`
@@ -1824,13 +1824,13 @@ npm run dev
 ```
 
 **Swagger UI check karna:**
-Browser mein jao: `http://localhost:8000/docs`
+<!-- Browser mein jao: `http://localhost:8000/docs` -->
 
 ---
 
 ### Step 2: Login Page Test (`/login`)
 
-1. Browser mein `http://localhost:3000/login` kholo
+<!-- 1. Browser mein `http://localhost:3000/login` kholo -->
 2. **Test 1 — Wrong credentials:**
    - Email: `wrong@email.com`, Password: `wrongpass`
    - Expected: Error message "Incorrect email or password"
@@ -1987,7 +1987,7 @@ Postman mein ek environment banao "Crop2X CRM":
 
 | Variable | Value |
 |----------|-------|
-| `base_url` | `http://localhost:8000` |
+<!-- | `base_url` | `http://localhost:8000` | -->
 | `access_token` | (login ke baad yahan paste karo) |
 | `refresh_token` | (login ke baad yahan paste karo) |
 
@@ -2147,7 +2147,7 @@ Expected: `403 Forbidden — Not enough permissions`
 
 ### Swagger UI Se Testing
 
-1. `http://localhost:8000/docs` kholo
+<!-- 1. `http://localhost:8000/docs` kholo -->
 2. "Authorize" button click karo
 3. `Bearer <your_access_token>` dalo
 4. Koi bhi endpoint expand karo
@@ -2163,11 +2163,11 @@ Expected: `403 Forbidden — Not enough permissions`
 ## 13. Step-by-Step Manual Testing Checklist
 
 ### ✅ Phase 1: System Setup Check
-
+<!-- 
 - [ ] Backend server start ho raha hai (`uvicorn app.main:app --reload`)
 - [ ] Frontend server start ho raha hai (`npm run dev`)
 - [ ] `http://localhost:8000/docs` Swagger UI khul raha hai
-- [ ] `http://localhost:8000/` root endpoint `{"message": "Welcome to Crop2x CRM API"}` return kar raha hai
+- [ ] `http://localhost:8000/` root endpoint `{"message": "Welcome to Crop2x CRM API"}` return kar raha hai -->
 - [ ] Database connection sahi hai (koi error nahi)
 
 ---

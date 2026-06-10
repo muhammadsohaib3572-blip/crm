@@ -11,7 +11,10 @@ const leadSchema = z.object({
   company_name: z.string().min(1, 'Company name is required'),
   email: z.string().email('Invalid email').optional().nullable(),
   phone: z.string().optional().nullable(),
-  stage: z.enum(['NEW_LEAD', 'CONTACTED', 'NEGOTIATION', 'CONVERTED', 'LOST']),
+  stage: z.enum([
+    'NEW_LEAD', 'CONTACTED', 'MEETING_SCHEDULED', 'PROPOSAL_SENT',
+    'NEGOTIATION', 'WON', 'LOST',
+  ]),
   follow_up_date: z.string().optional().nullable(),
   quotation_amount: z.coerce.number().optional().nullable(),
   proposal_link: z.string().url('Invalid URL').optional().or(z.literal('')).nullable(),
@@ -135,8 +138,10 @@ export default function LeadFormModal({
                 >
                   <option value="NEW_LEAD">New Lead</option>
                   <option value="CONTACTED">Contacted</option>
+                  <option value="MEETING_SCHEDULED">Meeting Scheduled</option>
+                  <option value="PROPOSAL_SENT">Proposal Sent</option>
                   <option value="NEGOTIATION">Negotiation</option>
-                  <option value="CONVERTED">Converted</option>
+                  <option value="WON">Won</option>
                   <option value="LOST">Lost</option>
                 </select>
               </div>

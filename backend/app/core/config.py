@@ -10,6 +10,14 @@ class Settings(BaseSettings):
     SECRET_KEY: str = os.getenv("SECRET_KEY", "secret")
     ALGORITHM: str = os.getenv("ALGORITHM", "HS256")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 30))
-   
+    # Comma-separated origins, e.g. http://localhost:3000,https://crm.example.com
+    CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "http://localhost:3000")
+    ALLOW_PUBLIC_REGISTER: bool = os.getenv("ALLOW_PUBLIC_REGISTER", "false").lower() == "true"
+    SETUP_SECRET: str = os.getenv("SETUP_SECRET", "")
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
+
 
 settings = Settings()

@@ -6,7 +6,8 @@ from app.database.session import get_db
 from app.repositories.client_repository import ClientRepository
 from app.schemas.client import ClientCreate, ClientUpdate, ClientInDB
 from app.models.user import User, UserRole
-from app.routers.deps import get_current_user, get_current_user_for_middleware, check_role
+from app.routers.deps import get_current_user_for_middleware, check_role
+from app.core.rbac import CLIENT_READ_ROLES, CLIENT_WRITE_ROLES
 from app.services.activity_log_service import ActivityLogService
 
 router = APIRouter()
@@ -16,7 +17,7 @@ async def read_clients(
     skip: int = 0,
     limit: int = 100,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user_for_middleware)
+    current_user: User = Depends(check_role(CLIENT_READ_ROLES))
 ):
     repo = ClientRepository(db)
     return await repo.get_all(skip=skip, limit=limit)
@@ -25,7 +26,7 @@ async def read_clients(
 async def create_client(
     client_in: ClientCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(check_role([UserRole.ADMIN, UserRole.MANAGER, UserRole.BUSINESS]))
+    current_user: User = Depends(check_role(CLIENT_WRITE_ROLES))
 ):
     repo = ClientRepository(db)
     client = await repo.create(client_in)
@@ -44,7 +45,7 @@ async def create_client(
 async def read_client(
     client_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user_for_middleware)
+    current_user: User = Depends(check_role(CLIENT_READ_ROLES))
 ):
     repo = ClientRepository(db)
     client = await repo.get_by_id(client_id)
@@ -57,7 +58,7 @@ async def update_client(
     client_id: UUID,
     client_in: ClientUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(check_role([UserRole.ADMIN, UserRole.MANAGER, UserRole.BUSINESS]))
+    current_user: User = Depends(check_role(CLIENT_WRITE_ROLES))
 ):
     repo = ClientRepository(db)
     db_client = await repo.get_by_id(client_id)

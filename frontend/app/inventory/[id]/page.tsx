@@ -1,10 +1,12 @@
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import InventoryItemDetails from '@/modules/inventory/InventoryItemDetails';
 import Link from 'next/link';
 
 export default async function InventoryItemPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   return (
+    <ProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'HARDWARE']}>
     <DashboardLayout>
       <div className="p-4 space-y-6 sm:p-6 lg:p-8">
         <div className="flex items-center space-x-4">
@@ -14,5 +16,6 @@ export default async function InventoryItemPage({ params }: { params: Promise<{ 
         <InventoryItemDetails id={id} />
       </div>
     </DashboardLayout>
+    </ProtectedRoute>
   );
 }

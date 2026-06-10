@@ -24,17 +24,17 @@ class AuditMiddleware(BaseHTTPMiddleware):
         # Only log mutating operations and certain routes
         mutating_methods = {"POST", "PUT", "PATCH", "DELETE"}
         audit_routes = {
-            "/api/clients": ["CREATE", "UPDATE", "DELETE"],
-            "/api/devices": ["CREATE", "UPDATE", "DELETE"],
-            "/api/users": ["CREATE", "UPDATE", "DELETE"],
-            "/api/tasks": ["CREATE", "UPDATE", "DELETE"],
-            "/api/billing": ["CREATE", "UPDATE", "DELETE"],
-            "/api/leads": ["CREATE", "UPDATE", "DELETE"],
-            "/api/inventory": ["CREATE", "UPDATE", "DELETE"],
-            "/api/issues": ["CREATE", "UPDATE", "DELETE"],
-            "/api/reports": ["CREATE", "UPDATE", "DELETE"],
-            "/api/uploads": ["UPLOAD"],
-            "/api/auth/login": ["LOGIN"],
+            "/clients": ["CREATE", "UPDATE", "DELETE"],
+            "/devices": ["CREATE", "UPDATE", "DELETE"],
+            "/users": ["CREATE", "UPDATE", "DELETE"],
+            "/tasks": ["CREATE", "UPDATE", "DELETE"],
+            "/billing": ["CREATE", "UPDATE", "DELETE"],
+            "/leads": ["CREATE", "UPDATE", "DELETE"],
+            "/inventory": ["CREATE", "UPDATE", "DELETE"],
+            "/issues": ["CREATE", "UPDATE", "DELETE"],
+            "/reports": ["CREATE", "UPDATE", "DELETE"],
+            "/uploads": ["UPLOAD"],
+            "/auth/login": ["LOGIN"],
         }
 
         # Get user info from request state (set by auth middleware)
@@ -44,14 +44,14 @@ class AuditMiddleware(BaseHTTPMiddleware):
 
         # Determine action type based on method and path
         if request.method in mutating_methods:
-            if request.url.path.startswith("/api/"):
+            if request.url.path.startswith(("/",)):
                 path_parts = request.url.path.strip("/").split("/")
                 if len(path_parts) > 1:
                     entity_type = path_parts[1].upper()
                     action_type = request.method.upper()
         
         # Special case for login
-        if request.url.path == "/api/auth/login":
+        if request.url.path == "/auth/login":
             action_type = "LOGIN"
             entity_type = "Auth"
         

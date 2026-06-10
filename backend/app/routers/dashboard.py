@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, cast, Date as SADate
 from datetime import date, timedelta
 from app.database.session import get_db
 from app.models.user import User, UserRole
@@ -106,15 +106,23 @@ async def _business_dashboard(db: AsyncSession) -> dict:
     won = won_r.scalar() or 0
     stats["conversion_rate"] = round((won / total) * 100, 1)
 
-    # Follow-ups due today
+    from app.models.lead import LeadActivityType
     followups_r = await db.execute(
-        select(func.count(LeadActivity.id)).where(LeadActivity.scheduled_at != None)
+        select(func.count(LeadActivity.id)).where(
+            LeadActivity.activity_type == LeadActivityType.FOLLOW_UP,
+            func.cast(LeadActivity.scheduled_at, SADate) == today,
+        )
     )
-    # Meetings this week
+    stats["followups_due_today"] = followups_r.scalar()
+
     meetings_r = await db.execute(
-        select(func.count(LeadActivity.id))
+        select(func.count(LeadActivity.id)).where(
+            LeadActivity.activity_type == LeadActivityType.MEETING,
+            func.cast(LeadActivity.scheduled_at, SADate) >= today,
+            func.cast(LeadActivity.scheduled_at, SADate) <= week_end,
+        )
     )
-    stats["total_activities"] = meetings_r.scalar()
+    stats["meetings_this_week"] = meetings_r.scalar()
 
     return stats
 

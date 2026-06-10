@@ -6,7 +6,16 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import api from '@/services/api/axios';
 import { useAuthStore } from '@/store/auth/useAuthStore';
-import { Plus, Download, CreditCard, Filter, X } from 'lucide-react';
+import { Plus, Download, CreditCard, Filter, Upload } from 'lucide-react';
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://crm-production-e6ff.up.railway.app/';
+
+function fileUrl(filePath: string | null): string | null {
+  if (!filePath) return null;
+  const normalized = filePath.replace(/\\/g, '/').replace(/^\/?uploads\//, '/uploads/');
+  if (normalized.startsWith('http')) return normalized;
+  return `${API_BASE}${normalized.startsWith('/') ? '' : '/'}${normalized}`;
+}
 
 interface Invoice {
   id: string;
@@ -257,10 +266,24 @@ export default function BillingLedger() {
   }, []);
 
   const handleDownload = (invoice: Invoice) => {
-    if (invoice.file_path) {
-      window.open(invoice.file_path.replace(/\\/g, '/'), '_blank');
+    const url = fileUrl(invoice.file_path);
+    if (url) {
+      window.open(url, '_blank');
     } else {
-      alert('No PDF attached to this invoice.');
+      alert('No file attached to this invoice.');
+    }
+  };
+
+  const handleUpload = async (invoiceId: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      await api.post(`/uploads/invoices/${invoiceId}/upload`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      fetchInvoices();
+    } catch {
+      alert('Failed to upload invoice file.');
     }
   };
 
@@ -350,15 +373,30 @@ export default function BillingLedger() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{new Date(invoice.due_date).toLocaleDateString()}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-right">
                     <div className="flex items-center justify-end gap-3">
-                      {/* Download PDF */}
                       <button
                         onClick={() => handleDownload(invoice)}
-                        title={invoice.file_path ? 'Download PDF' : 'No PDF attached'}
+                        title={invoice.file_path ? 'Download file' : 'No file attached'}
                         className={`flex items-center gap-1 text-xs font-bold transition-colors ${invoice.file_path ? 'text-blue-600 hover:text-blue-800' : 'text-gray-400 cursor-not-allowed'}`}
                         disabled={!invoice.file_path}
                       >
                         <Download className="w-3.5 h-3.5" /> Download
                       </button>
+
+                      {canManageBilling && (
+                        <label className="flex items-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-800 cursor-pointer">
+                          <Upload className="w-3.5 h-3.5" /> Upload
+                          <input
+                            type="file"
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleUpload(invoice.id, file);
+                              e.target.value = '';
+                            }}
+                          />
+                        </label>
+                      )}
 
                       {/* Record Payment */}
                       {canManageBilling && invoice.status !== 'PAID' && invoice.status !== 'CANCELLED' && (

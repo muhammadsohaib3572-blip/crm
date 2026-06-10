@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import api from '@/services/api/axios';
 import TaskFormModal from './TaskFormModal';
+import { useAuthStore } from '@/store/auth/useAuthStore';
 import { Plus } from 'lucide-react';
 
 const statuses = ['PENDING', 'IN_PROGRESS', 'COMPLETED'];
@@ -17,6 +18,9 @@ interface Task {
 }
 
 export default function TaskBoard() {
+  const { user } = useAuthStore();
+  const canCreate = user && ['ADMIN', 'MANAGER', 'BUSINESS', 'ACCOUNTS', 'HARDWARE', 'AGRONOMY'].includes(user.role);
+  const canDeleteAny = user && ['ADMIN', 'MANAGER'].includes(user.role);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -59,14 +63,16 @@ export default function TaskBoard() {
 
   return (
     <>
-      <div className="flex justify-end mb-6">
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-bold shadow-sm cursor-pointer"
-        >
-          <Plus className="w-4 h-4 mr-2" /> Create Task
-        </button>
-      </div>
+      {canCreate && (
+        <div className="flex justify-end mb-6">
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-bold shadow-sm cursor-pointer"
+          >
+            <Plus className="w-4 h-4 mr-2" /> Create Task
+          </button>
+        </div>
+      )}
 
       <div className="flex space-x-6 overflow-x-auto pb-6">
         {statuses.map((status) => (
@@ -89,12 +95,14 @@ export default function TaskBoard() {
                       }`}>
                         {task.priority}
                       </span>
-                      <button
-                        onClick={() => handleDelete(task.id)}
-                        className="text-red-400 hover:text-red-600 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        ✕
-                      </button>
+                      {(canDeleteAny || task.assigned_to?.full_name === user?.full_name) && (
+                        <button
+                          onClick={() => handleDelete(task.id)}
+                          className="text-red-400 hover:text-red-600 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          ✕
+                        </button>
+                      )}
                     </div>
                     <h4 className="font-bold text-gray-900 group-hover:text-blue-600 transition-colors text-sm">{task.title}</h4>
                     <p className="text-xs text-gray-500 mt-1 line-clamp-2 leading-relaxed">{task.description || 'No description provided.'}</p>

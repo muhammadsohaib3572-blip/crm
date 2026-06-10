@@ -60,7 +60,7 @@ async def upload_invoice_file(
         buffer.write(content)
 
     # Update invoice with file path
-    invoice.file_path = str(file_path)
+    invoice.file_path = f"/uploads/invoices/{unique_filename}"
     await db.commit()
 
     # Audit log

@@ -5,9 +5,10 @@ from typing import List
 from uuid import UUID
 from app.database.session import get_db
 from app.repositories.lead_repository import LeadRepository
-from app.schemas.client import LeadCreate, LeadUpdate, LeadInDB, LeadActivityCreate, LeadActivityInDB
+from app.repositories.client_repository import ClientRepository
+from app.schemas.client import LeadCreate, LeadUpdate, LeadInDB, LeadActivityCreate, LeadActivityInDB, ClientCreate
 from app.models.user import User, UserRole
-from app.models.lead import Lead, LeadActivity, LEAD_STAGE_TRANSITIONS
+from app.models.lead import Lead, LeadActivity, LeadStage, LEAD_STAGE_TRANSITIONS
 from app.routers.deps import get_current_user, check_role
 from app.services.activity_log_service import ActivityLogService
 
@@ -103,6 +104,40 @@ async def delete_lead(
     )
     await repo.delete(lead)
     return lead
+
+@router.post("/{lead_id}/convert", response_model=LeadInDB)
+async def convert_lead_to_client(
+    lead_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(check_role([UserRole.ADMIN, UserRole.MANAGER, UserRole.BUSINESS]))
+):
+    """Convert a WON lead into an active client."""
+    lead_repo = LeadRepository(db)
+    client_repo = ClientRepository(db)
+    lead = await lead_repo.get_by_id(lead_id)
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    if lead.client_id:
+        raise HTTPException(status_code=400, detail="Lead already converted to a client")
+
+    client = await client_repo.create(ClientCreate(
+        name=lead.name,
+        company_name=lead.company_name,
+        contact_info=lead.contact_info or lead.phone,
+        services=lead.service_tags,
+        onboarding_date=lead.follow_up_date,
+    ))
+
+    updated = await lead_repo.update(lead, LeadUpdate(stage=LeadStage.WON, client_id=client.id))
+
+    await ActivityLogService.log_activity(
+        db, current_user.id, current_user.full_name, "CREATE", "Client",
+        f"Converted lead '{lead.name}' to client '{client.name}'",
+        entity_id=client.id, role=current_user.role,
+        extra_data={"lead_id": str(lead_id)}
+    )
+    return updated
+
 
 # ── Lead Activities (Follow-ups, Meetings, Farm Visits) ───
 @router.get("/{lead_id}/activities", response_model=List[LeadActivityInDB])

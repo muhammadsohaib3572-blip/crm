@@ -3,7 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from app.models.device import Device, DeviceStatus, DeviceHistory
 from app.models.user import User
-from uuid import uuid4
+from uuid import UUID
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 
@@ -27,12 +27,19 @@ class DeviceService:
 
 
     @staticmethod
+    def validate_installed_client(client_id: Optional[UUID], new_status: DeviceStatus) -> None:
+        if new_status == DeviceStatus.INSTALLED and not client_id:
+            raise ValueError("client_id is required when status is INSTALLED")
+
+    @staticmethod
     async def change_device_status(
         db: AsyncSession,
         device_id: str,
         new_status: DeviceStatus,
         changed_by_user: User,
-        notes: Optional[str] = None
+        notes: Optional[str] = None,
+        client_id: Optional[UUID] = None,
+        installation_location: Optional[str] = None,
     ) -> Device:
         """Change device status with validation and history tracking."""
         # Get current device
@@ -42,13 +49,16 @@ class DeviceService:
         if not device:
             raise ValueError(f"Device {device_id} not found")
 
-        # Validate status transition
         await DeviceService._validate_status_transition(device.status, new_status)
 
-        # Get previous status for history
-        previous_status = device.status
+        if client_id is not None:
+            device.client_id = client_id
+        if installation_location is not None:
+            device.installation_location = installation_location
 
-        # Update device status
+        DeviceService.validate_installed_client(device.client_id, new_status)
+
+        previous_status = device.status
         device.status = new_status
         device.updated_at = datetime.utcnow()
 
@@ -74,26 +84,24 @@ class DeviceService:
     ) -> None:
         """Validate allowed status transitions."""
         allowed_transitions = {
-            DeviceStatus.UNDER_DEVELOPMENT: [
-                DeviceStatus.QA_FOR_AGRONOMIST,
-                DeviceStatus.BACK_AT_OFFICE
-            ],
+            DeviceStatus.UNDER_DEVELOPMENT: [DeviceStatus.QA_FOR_AGRONOMIST],
             DeviceStatus.QA_FOR_AGRONOMIST: [
                 DeviceStatus.QA_PASSED_IN_INVENTORY,
-                DeviceStatus.BACK_AT_OFFICE
+                DeviceStatus.UNDER_DEVELOPMENT,
             ],
             DeviceStatus.QA_PASSED_IN_INVENTORY: [
                 DeviceStatus.INSTALLED,
-                DeviceStatus.BACK_AT_OFFICE
+                DeviceStatus.UNDER_DEVELOPMENT,
             ],
             DeviceStatus.INSTALLED: [
-                DeviceStatus.BACK_AT_OFFICE
+                DeviceStatus.BACK_AT_OFFICE,
+                DeviceStatus.QA_FOR_AGRONOMIST,
             ],
             DeviceStatus.BACK_AT_OFFICE: [
-                DeviceStatus.UNDER_DEVELOPMENT,
                 DeviceStatus.QA_FOR_AGRONOMIST,
-                DeviceStatus.INSTALLED
-            ]
+                DeviceStatus.UNDER_DEVELOPMENT,
+                DeviceStatus.INSTALLED,
+            ],
         }
         
         if new_status not in allowed_transitions.get(current_status, []):

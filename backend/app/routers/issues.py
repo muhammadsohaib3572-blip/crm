@@ -11,15 +11,30 @@ from app.repositories.task_repository import TaskRepository
 from app.schemas.ops import TaskCreate
 from app.schemas.issue import IssueCreate, IssueUpdate, IssueInDB
 from app.routers.deps import get_current_user, check_role
+from app.core.rbac import ISSUE_READ_ROLES
 from app.services.activity_log_service import ActivityLogService
 
 router = APIRouter()
+
+@router.get("/issues", response_model=List[IssueInDB])
+async def list_all_issues(
+    skip: int = 0,
+    limit: int = 100,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(check_role(ISSUE_READ_ROLES))
+):
+    """List all client issues across the system."""
+    result = await db.execute(
+        select(ClientIssue).order_by(ClientIssue.created_at.desc()).offset(skip).limit(limit)
+    )
+    return result.scalars().all()
+
 
 @router.get("/clients/{client_id}/issues", response_model=List[IssueInDB])
 async def get_client_issues(
     client_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(check_role(ISSUE_READ_ROLES))
 ):
     """Get all issues for a specific client"""
     query = select(ClientIssue).where(ClientIssue.client_id == client_id)
@@ -160,6 +175,15 @@ async def delete_issue(
     if not issue:
         raise HTTPException(status_code=404, detail="Issue not found")
 
+    await ActivityLogService.log_activity(
+        db,
+        current_user.id,
+        current_user.full_name,
+        "DELETE",
+        "ClientIssue",
+        f"Deleted issue '{issue.title}'",
+        entity_id=issue.id,
+    )
     await db.delete(issue)
     await db.commit()
     return {"message": "Issue deleted successfully"}
