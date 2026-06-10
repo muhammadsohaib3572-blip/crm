@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import api from '@/services/api/axios';
 import { useAuthStore } from '@/store/auth/useAuthStore';
-import { Plus, Download, CreditCard, Filter, Upload } from 'lucide-react';
+import { Plus, Download, CreditCard, Filter, Upload, XCircle, Trash2 } from 'lucide-react';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://crm-production-e6ff.up.railway.app/';
 
@@ -247,6 +247,7 @@ export default function BillingLedger() {
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
 
   const canManageBilling = user && ['ADMIN', 'MANAGER', 'ACCOUNTS'].includes(user.role);
+  const canDeleteInvoice = user && ['ADMIN', 'MANAGER'].includes(user.role);
 
   const fetchInvoices = async () => {
     try {
@@ -271,6 +272,30 @@ export default function BillingLedger() {
       window.open(url, '_blank');
     } else {
       alert('No file attached to this invoice.');
+    }
+  };
+
+  const handleStatusChange = async (invoiceId: string, status: string) => {
+    try {
+      await api.patch(`/billing/invoices/${invoiceId}`, { status });
+      fetchInvoices();
+    } catch {
+      alert('Failed to update invoice status.');
+    }
+  };
+
+  const handleCancel = async (invoiceId: string) => {
+    if (!confirm('Cancel this invoice?')) return;
+    await handleStatusChange(invoiceId, 'CANCELLED');
+  };
+
+  const handleDeleteInvoice = async (invoiceId: string) => {
+    if (!confirm('Permanently delete this invoice?')) return;
+    try {
+      await api.delete(`/billing/invoices/${invoiceId}`);
+      setInvoices(prev => prev.filter(i => i.id !== invoiceId));
+    } catch (err: any) {
+      alert(err.response?.data?.detail || 'Failed to delete invoice.');
     }
   };
 
@@ -405,6 +430,38 @@ export default function BillingLedger() {
                           className="flex items-center gap-1 text-xs font-bold text-green-600 hover:text-green-800 transition-colors"
                         >
                           <CreditCard className="w-3.5 h-3.5" /> Pay
+                        </button>
+                      )}
+
+                      {canManageBilling && invoice.status !== 'PAID' && invoice.status !== 'CANCELLED' && (
+                        <select
+                          value={invoice.status}
+                          onChange={(e) => handleStatusChange(invoice.id, e.target.value)}
+                          className="text-[10px] font-bold border rounded px-1 py-0.5"
+                        >
+                          {['DRAFT', 'SENT', 'OVERDUE', 'CANCELLED'].map(s => (
+                            <option key={s} value={s}>{s}</option>
+                          ))}
+                        </select>
+                      )}
+
+                      {canManageBilling && invoice.status !== 'PAID' && invoice.status !== 'CANCELLED' && (
+                        <button
+                          onClick={() => handleCancel(invoice.id)}
+                          className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-800"
+                          title="Cancel invoice"
+                        >
+                          <XCircle className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+
+                      {canDeleteInvoice && invoice.status !== 'PAID' && (
+                        <button
+                          onClick={() => handleDeleteInvoice(invoice.id)}
+                          className="flex items-center gap-1 text-xs font-bold text-red-600 hover:text-red-800"
+                          title="Delete invoice"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       )}
                     </div>

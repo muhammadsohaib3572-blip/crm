@@ -25,6 +25,18 @@ async def read_field_reports(
         return await repo.get_by_client(client_id)
     return await repo.get_all(skip=skip, limit=limit)
 
+@router.get("/{report_id}", response_model=FieldReportInDB)
+async def read_field_report(
+    report_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(check_role(REPORT_READ_ROLES))
+):
+    repo = ReportRepository(db)
+    report = await repo.get_by_id(report_id)
+    if not report:
+        raise HTTPException(status_code=404, detail="Field report not found")
+    return report
+
 @router.get("/client/{client_id}", response_model=List[FieldReportInDB])
 async def read_client_field_reports(
     client_id: UUID,

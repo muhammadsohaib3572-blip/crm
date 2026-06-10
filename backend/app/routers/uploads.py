@@ -8,6 +8,7 @@ from pathlib import Path
 from app.database.session import get_db
 from app.models.billing import Invoice
 from app.models.inventory import Procurement
+from app.models.report import FieldReport
 from app.models.user import User, UserRole
 from app.routers.deps import get_current_user, check_role
 from app.services.activity_log_service import ActivityLogService
@@ -18,9 +19,11 @@ router = APIRouter()
 UPLOAD_DIR = Path("uploads")
 INVOICE_DIR = UPLOAD_DIR / "invoices"
 INVENTORY_DIR = UPLOAD_DIR / "inventory"
+REPORTS_DIR = UPLOAD_DIR / "reports"
 
 INVOICE_DIR.mkdir(parents=True, exist_ok=True)
 INVENTORY_DIR.mkdir(parents=True, exist_ok=True)
+REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
 @router.post("/invoices/{invoice_id}/upload")
 async def upload_invoice_file(
@@ -76,6 +79,56 @@ async def upload_invoice_file(
         "file_path": str(file_path),
         "filename": file.filename
     }
+
+@router.post("/reports/{report_id}/upload")
+async def upload_report_file(
+    report_id: UUID,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(check_role([UserRole.ADMIN, UserRole.MANAGER, UserRole.AGRONOMY]))
+):
+    """Upload field report attachment (PDF, JPG, JPEG, PNG — max 10 MB)"""
+    result = await db.execute(select(FieldReport).where(FieldReport.id == report_id))
+    report = result.scalars().first()
+    if not report:
+        raise HTTPException(status_code=404, detail="Field report not found")
+
+    allowed_extensions = {".pdf", ".jpg", ".jpeg", ".png"}
+    file_extension = Path(file.filename).suffix.lower()
+    if file_extension not in allowed_extensions:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid file type '{file_extension}'. Allowed: pdf, jpg, jpeg, png"
+        )
+
+    content = await file.read()
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="File exceeds 10 MB limit")
+
+    unique_filename = f"{report_id}{file_extension}"
+    file_path = REPORTS_DIR / unique_filename
+    with open(file_path, "wb") as buffer:
+        buffer.write(content)
+
+    public_path = f"/uploads/reports/{unique_filename}"
+    attachments = list(report.attachments or [])
+    attachments.append(public_path)
+    report.attachments = attachments
+    await db.commit()
+
+    await ActivityLogService.log_activity(
+        db, current_user.id, current_user.full_name, "FILE_UPLOAD", "FieldReport",
+        f"Uploaded attachment for report {report_id}", entity_id=report_id,
+        role=current_user.role
+    )
+
+    return {
+        "message": "Report file uploaded successfully",
+        "report_id": str(report_id),
+        "file_path": public_path,
+        "filename": file.filename,
+    }
+
 
 @router.post("/inventory/upload-media")
 async def upload_inventory_media(

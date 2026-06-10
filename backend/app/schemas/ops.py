@@ -85,6 +85,19 @@ class InvoiceCreate(InvoiceBase):
             raise ValueError("Invoice due date cannot be in the past")
         return v
 
+class InvoiceUpdate(BaseModel):
+    amount: Optional[Decimal] = None
+    status: Optional[InvoiceStatus] = None
+    due_date: Optional[date] = None
+    file_path: Optional[str] = None
+
+    @field_validator("amount")
+    @classmethod
+    def amount_positive(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+        if v is not None and v <= 0:
+            raise ValueError("Invoice amount must be greater than 0")
+        return v
+
 class InvoiceInDB(InvoiceBase):
     id: UUID
     created_at: datetime

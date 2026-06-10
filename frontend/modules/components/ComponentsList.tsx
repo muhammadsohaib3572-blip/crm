@@ -112,7 +112,7 @@ function ProcureModal({
     if (!form.cost || Number(form.cost) <= 0) { setError('Cost must be greater than 0'); return; }
     setLoading(true); setError('');
     try {
-      await api.post(`/components/${component.id}/procure`, {
+      const res = await api.post(`/components/${component.id}/procure`, {
         component_id: component.id,
         supplier: form.supplier || null,
         vendor: form.vendor || null,
@@ -120,8 +120,18 @@ function ProcureModal({
         cost: Number(form.cost),
         purchase_date: form.purchase_date,
       });
+      if (imageFile) {
+        const formData = new FormData();
+        formData.append('file', imageFile);
+        await api.post(
+          `/components/${component.id}/procure/upload-image?procurement_id=${res.data.id}`,
+          formData,
+          { headers: { 'Content-Type': 'multipart/form-data' } }
+        );
+      }
       onSuccess(); onClose();
       setForm({ supplier: '', vendor: '', quantity: 1, cost: '', purchase_date: today });
+      setImageFile(null);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to record procurement');
     } finally { setLoading(false); }

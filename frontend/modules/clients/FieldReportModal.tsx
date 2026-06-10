@@ -33,6 +33,7 @@ export default function FieldReportModal({
 }: FieldReportModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [attachment, setAttachment] = useState<File | null>(null);
 
   const {
     register,
@@ -51,13 +52,21 @@ export default function FieldReportModal({
     setIsLoading(true);
     setError(null);
     try {
-      await api.post('/reports/', {
+      const res = await api.post('/reports/', {
         ...data,
         client_id: clientId,
         device_id: data.device_id || null,
       });
+      if (attachment) {
+        const formData = new FormData();
+        formData.append('file', attachment);
+        await api.post(`/uploads/reports/${res.data.id}/upload`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+      }
       onSuccess();
       reset();
+      setAttachment(null);
       onClose();
     } catch (err: any) {
       const detail = err.response?.data?.detail;
@@ -133,6 +142,16 @@ export default function FieldReportModal({
               className="w-full px-4 py-2 mt-1 border rounded-md text-gray-900 focus:ring-blue-500 focus:border-blue-500 outline-none"
             />
             {errors.report_date && <p className="mt-1 text-xs text-red-500">{errors.report_date.message}</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Attachment (PDF / Image)</label>
+            <input
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png"
+              onChange={(e) => setAttachment(e.target.files?.[0] || null)}
+              className="w-full mt-1 text-sm text-gray-700"
+            />
           </div>
 
           <div>
