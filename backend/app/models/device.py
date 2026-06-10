@@ -29,7 +29,7 @@ class Device(Base, IDMixin, TimestampMixin):
     client: Mapped[Optional["Client"]] = relationship("Client", back_populates="devices")
     assigned_hardware: Mapped[Optional["User"]] = relationship("User", foreign_keys=[assigned_hardware_id])
     assigned_agronomist: Mapped[Optional["User"]] = relationship("User", foreign_keys=[assigned_agronomist_id])
-    history: Mapped[List["DeviceHistory"]] = relationship(back_populates="device", cascade="all, delete-orphan")
+    history: Mapped[List["DeviceHistory"]] = relationship(back_populates="device", cascade="all, delete-orphan", lazy="selectin")
 
 class DeviceHistory(Base, IDMixin):
     __tablename__ = "device_status_history"

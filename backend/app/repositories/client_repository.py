@@ -3,7 +3,7 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy import desc
 from app.models.client import Client
-from app.models.device import Device
+from app.models.device import Device, DeviceHistory
 from app.schemas.client import ClientCreate, ClientUpdate
 from uuid import UUID
 from typing import List, Optional
@@ -16,7 +16,9 @@ class ClientRepository:
         result = await self.db.execute(
             select(Client)
             .options(
-                selectinload(Client.devices).selectinload(Device.history),
+                selectinload(Client.devices)
+                    .joinedload(Device.history)
+                    .joinedload(DeviceHistory.changed_by),
                 selectinload(Client.leads),
             )
             .order_by(desc(Client.created_at))
@@ -29,7 +31,6 @@ class ClientRepository:
         result = await self.db.execute(
             select(Client)
             .options(
-                selectinload(Client.devices).selectinload(Device.history),
                 selectinload(Client.leads),
             )
             .where(Client.id == client_id)

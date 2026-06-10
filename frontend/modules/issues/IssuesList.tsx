@@ -40,8 +40,11 @@ function CreateIssueModal({
 }: {
   isOpen: boolean; onClose: () => void; onSuccess: () => void; clients: Client[];
 }) {
-  const [form, setForm] = useState({ client_id: '', title: '', description: '', priority: 'MEDIUM' });
+  const [statuses] = useState<string[]>(['OPEN', 'IN_PROGRESS', 'RESOLVED']);
+  // Removed API call; using static status options
+  const [form, setForm] = useState({ client_id: '', title: '', description: '', priority: 'MEDIUM', status: 'OPEN' });
   const [loading, setLoading] = useState(false);
+
   const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -53,10 +56,10 @@ function CreateIssueModal({
         title: form.title,
         description: form.description,
         priority: form.priority,
-        status: 'OPEN',
+        status: form.status,
       });
       onSuccess(); onClose();
-      setForm({ client_id: '', title: '', description: '', priority: 'MEDIUM' });
+      setForm({ client_id: '', title: '', description: '', priority: 'MEDIUM', status: 'OPEN' });
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to create issue');
     } finally { setLoading(false); }
@@ -96,6 +99,15 @@ function CreateIssueModal({
               <option value="LOW">Low</option>
               <option value="MEDIUM">Medium</option>
               <option value="HIGH">High</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+            <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
+              className="w-full border rounded-lg px-3 py-2 text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none">
+              {statuses.map(s => (
+                <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
+              ))}
             </select>
           </div>
           <div className="flex gap-3 pt-2">
@@ -149,6 +161,9 @@ export default function IssuesList() {
   };
 
   useEffect(() => { fetchIssues(); }, []);
+
+
+
 
   const filtered = statusFilter === 'ALL' ? issues : issues.filter(i => i.status === statusFilter);
 

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import api from '@/services/api/axios';
 import Link from 'next/link';
 import ClientFormModal from './ClientFormModal';
+import { useAuthStore } from '@/store/auth/useAuthStore';
 import { Edit, Trash2, Plus } from 'lucide-react';
 
 interface Client {
@@ -14,10 +15,13 @@ interface Client {
 }
 
 export default function ClientList() {
+  const { user } = useAuthStore();
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+
+  const canDelete = user && ['ADMIN', 'MANAGER'].includes(user.role);
 
   useEffect(() => {
     fetchClients();
@@ -83,13 +87,15 @@ export default function ClientList() {
                 >
                   <Edit className="w-4 h-4" />
                 </button>
-                <button
-                  onClick={() => handleDelete(client.id)}
-                  className="p-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors cursor-pointer"
-                  title="Delete Client"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                {canDelete && (
+                  <button
+                    onClick={() => handleDelete(client.id)}
+                    className="p-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors cursor-pointer"
+                    title="Delete Client"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             </div>
             <div className="mt-6 flex items-center justify-between border-t pt-4 border-slate-50">

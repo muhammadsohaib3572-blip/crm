@@ -26,6 +26,16 @@ async def read_devices(
     repo = DeviceRepository(db)
     return await repo.get_all(skip=skip, limit=limit)
 
+# New endpoint: Get all possible device statuses (must be before any {device_id} routes)
+@router.get("/statuses", response_model=List[str])
+async def get_device_statuses(
+    current_user: User = Depends(get_current_user_for_middleware)
+) -> List[str]:
+    """Return a list of all DeviceStatus enum values.
+    The endpoint is public to authenticated users; no special role required.
+    """
+    return [status.value for status in DeviceStatus]
+
 @router.post("/", response_model=DeviceInDB)
 async def create_device(
     device_in: DeviceCreate,
