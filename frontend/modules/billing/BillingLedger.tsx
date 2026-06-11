@@ -212,7 +212,7 @@ function RecordPaymentModal({
       <div className="bg-white rounded-lg p-8 max-w-md w-full shadow-xl">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-900">Record Payment</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><XCircle className="w-5 h-5" /></button>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
         </div>
 
         <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-100">
