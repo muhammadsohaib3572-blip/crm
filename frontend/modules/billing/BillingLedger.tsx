@@ -8,7 +8,7 @@ import api from '@/services/api/axios';
 import { useAuthStore } from '@/store/auth/useAuthStore';
 import { toast } from '@/lib/toast';
 import { formatApiError } from '@/lib/formatApiError';
-import { Plus, Download, CreditCard, Filter, Upload, XCircle, Trash2, X } from 'lucide-react';
+import { Plus, Download, CreditCard, Filter, Upload, XCircle, Trash2 } from 'lucide-react';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://crm-production-e6ff.up.railway.app/';
 
@@ -112,7 +112,7 @@ function NewInvoiceModal({
       <div className="bg-white rounded-lg p-8 max-w-md w-full shadow-xl">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-900">New Invoice</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><XCircle className="w-5 h-5" /></button>
         </div>
 
         {error && <div className="p-3 mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded">{error}</div>}
@@ -212,7 +212,7 @@ function RecordPaymentModal({
       <div className="bg-white rounded-lg p-8 max-w-md w-full shadow-xl">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-900">Record Payment</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><XCircle className="w-5 h-5" /></button>
         </div>
 
         <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-100">
