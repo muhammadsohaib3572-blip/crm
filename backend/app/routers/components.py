@@ -205,7 +205,7 @@ async def upload_procurement_image(
     with open(file_path, "wb") as f:
         f.write(content)
 
-    procurement.image_url = str(file_path)
+    procurement.image_url = f"/uploads/components/{filename}"
     await db.commit()
 
     await ActivityLogService.log_activity(
@@ -214,4 +214,4 @@ async def upload_procurement_image(
         entity_id=procurement_id, role=current_user.role
     )
 
-    return {"message": "Image uploaded", "image_url": str(file_path)}
+    return {"message": "Image uploaded", "image_url": procurement.image_url}

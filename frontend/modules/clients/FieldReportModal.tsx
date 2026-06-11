@@ -5,6 +5,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import api from '@/services/api/axios';
+import { toast } from '@/lib/toast';
+import { formatApiError } from '@/lib/formatApiError';
 
 const reportSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -33,6 +35,7 @@ export default function FieldReportModal({
 }: FieldReportModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [attachment, setAttachment] = useState<File | null>(null);
 
   const {
     register,
@@ -51,24 +54,27 @@ export default function FieldReportModal({
     setIsLoading(true);
     setError(null);
     try {
-      await api.post('/reports/', {
+      const res = await api.post('/reports/', {
         ...data,
         client_id: clientId,
         device_id: data.device_id || null,
       });
+      if (attachment) {
+        const formData = new FormData();
+        formData.append('file', attachment);
+        await api.post(`/uploads/reports/${res.data.id}/upload`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+      }
       onSuccess();
       reset();
+      setAttachment(null);
+      toast.success('Field report submitted successfully');
       onClose();
-    } catch (err: any) {
-      const detail = err.response?.data?.detail;
-      if (Array.isArray(detail)) {
-        // FastAPI 422 validation errors — extract messages
-        setError(detail.map((d: any) => d.msg).join(', '));
-      } else if (typeof detail === 'string') {
-        setError(detail);
-      } else {
-        setError('Failed to submit report. Please check all fields.');
-      }
+    } catch (err: unknown) {
+      const message = formatApiError(err, 'Failed to submit report. Please check all fields.');
+      toast.error(message);
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -133,6 +139,16 @@ export default function FieldReportModal({
               className="w-full px-4 py-2 mt-1 border rounded-md text-gray-900 focus:ring-blue-500 focus:border-blue-500 outline-none"
             />
             {errors.report_date && <p className="mt-1 text-xs text-red-500">{errors.report_date.message}</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Attachment (PDF / Image)</label>
+            <input
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png"
+              onChange={(e) => setAttachment(e.target.files?.[0] || null)}
+              className="w-full mt-1 p-2 bg-gray-100 border border-gray-300 rounded cursor-pointer hover:cursor-pointer focus:outline-none"
+            />
           </div>
 
           <div>

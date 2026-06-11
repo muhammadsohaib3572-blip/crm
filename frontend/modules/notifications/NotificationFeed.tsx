@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import api from '@/services/api/axios';
+import { toast } from '@/lib/toast';
+import { formatApiError } from '@/lib/formatApiError';
 
 type Notification = {
   id: string;
@@ -23,9 +25,9 @@ export default function NotificationFeed() {
       try {
         const response = await api.get('/notifications', { params: { limit: 50 } });
         setNotifications(response.data);
-      } catch (err: any) {
-        console.error('Unable to load notifications', err);
-        setError(err.response?.data?.detail || 'Unable to load notifications.');
+      } catch (err: unknown) {
+        toast.error(formatApiError(err, 'Unable to load notifications'));
+        setError(formatApiError(err, 'Unable to load notifications.'));
       } finally {
         setIsLoading(false);
       }
@@ -42,8 +44,9 @@ export default function NotificationFeed() {
           notification.id === notificationId ? { ...notification, is_read: !currentState } : notification
         )
       );
+      toast.success(currentState ? 'Marked as unread' : 'Marked as read');
     } catch (err) {
-      console.error('Unable to update notification status', err);
+      toast.error(formatApiError(err, 'Unable to update notification status'));
     }
   };
 
@@ -51,8 +54,9 @@ export default function NotificationFeed() {
     try {
       await api.post('/notifications/mark-all-read');
       setNotifications((prev) => prev.map((notification) => ({ ...notification, is_read: true })));
+      toast.success('All notifications marked as read');
     } catch (err) {
-      console.error('Unable to mark notifications read', err);
+      toast.error(formatApiError(err, 'Unable to mark notifications read'));
     }
   };
 

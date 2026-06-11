@@ -7,6 +7,8 @@ import * as z from 'zod';
 import { useRouter } from 'next/navigation';
 import api from '@/services/api/axios';
 import { useAuthStore } from '@/store/auth/useAuthStore';
+import { toast } from '@/lib/toast';
+import { formatApiError } from '@/lib/formatApiError';
 
 const loginSchema = z.object({
   username: z.string().email('Invalid email address'),
@@ -54,13 +56,15 @@ export default function LoginForm() {
       const userRes = await api.get('/auth/me');
       setAuth(userRes.data, token, refreshToken);
 
+      toast.success('Signed in successfully');
       router.push('/dashboard');
-    } catch (err: any) {
-      const detail = err.response?.data?.detail;
+    } catch (err: unknown) {
+      toast.error(formatApiError(err, 'Login failed. Please check your credentials.'));
+      const detail = (err as { response?: { data?: { detail?: unknown } } }).response?.data?.detail;
       const msg =
         typeof detail === 'object' && detail !== null
           ? JSON.stringify(detail)
-          : detail || 'Login failed. Please check your credentials.';
+          : (typeof detail === 'string' ? detail : '') || 'Login failed. Please check your credentials.';
       setError(msg);
     } finally {
       setIsLoading(false);

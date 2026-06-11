@@ -12,7 +12,11 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 30))
     # Comma-separated origins, e.g. http://localhost:3000,https://crm.example.com
     CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "http://localhost:3000")
-    ALLOW_PUBLIC_REGISTER: bool = os.getenv("ALLOW_PUBLIC_REGISTER", "false").lower() == "true"
+    ALLOW_PUBLIC_REGISTER: bool = os.getenv("ALLOW_PUBLIC_REGISTER", "true").lower() == "true"
+    PUBLIC_REGISTER_ROLES: str = os.getenv(
+        "PUBLIC_REGISTER_ROLES",
+        "ADMIN,MANAGER,BUSINESS,AGRONOMY,HARDWARE,ACCOUNTS,EMPLOYEE"
+    )
     SETUP_SECRET: str = os.getenv("SETUP_SECRET", "")
 
     @property

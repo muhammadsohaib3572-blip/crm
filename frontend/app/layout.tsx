@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/auth/useAuthStore';
 import api from '@/services/api/axios';
 import { usePathname, useRouter } from 'next/navigation';
 import { hasRouteAccess } from '@/lib/rbac';
+import ToastContainer from '@/components/ui/ToastContainer';
 import './globals.css';
 
 const PUBLIC_PATHS = ['/', '/login', '/register', '/unauthorized'];
@@ -55,7 +56,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        {children}
+        <ToastContainer />
+      </body>
     </html>
   );
 }

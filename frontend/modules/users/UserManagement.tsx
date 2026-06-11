@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import api from '@/services/api/axios';
-import { useAuthStore } from '@/store/auth/useAuthStore';
+import { toast } from '@/lib/toast';
+import { formatApiError } from '@/lib/formatApiError';
 
 import UserFormModal from './UserFormModal';
+import { useAuthStore } from '@/store/auth/useAuthStore';
 import { Trash2, Edit } from 'lucide-react';
 
 interface User {
@@ -17,7 +19,8 @@ interface User {
 }
 
 export default function UserManagement() {
-  const { user } = useAuthStore();
+  const { user: currentUser } = useAuthStore();
+  const isAdmin = currentUser?.role === 'ADMIN';
   const [users, setUsers] = useState<User[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -34,7 +37,7 @@ export default function UserManagement() {
       const res = await api.get('/users?limit=100');
       setUsers(res.data);
     } catch (error) {
-      console.error('Failed to fetch users', error);
+      toast.error(formatApiError(error, 'Failed to load users'));
     } finally {
       setIsLoading(false);
     }
@@ -45,8 +48,9 @@ export default function UserManagement() {
     try {
       await api.delete(`/users/${userId}`);
       setUsers((prev) => prev.filter((u) => u.id !== userId));
+      toast.success('User deleted successfully');
     } catch (error) {
-      console.error('Failed to delete user', error);
+      toast.error(formatApiError(error, 'Failed to delete user'));
     }
   };
 
@@ -71,7 +75,7 @@ export default function UserManagement() {
     <>
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold text-gray-900">User Management</h2>
-        {user?.role === 'ADMIN' ? (
+        {isAdmin ? (
           <button
             onClick={handleAddUser}
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
@@ -117,18 +121,24 @@ export default function UserManagement() {
                   {new Date(user.created_at).toLocaleDateString()}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                  <button
-                    onClick={() => handleEditUser(user)}
-                    className="text-blue-600 hover:text-blue-900 inline-flex items-center"
-                  >
-                    <Edit className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(user.id)}
-                    className="text-red-600 hover:text-red-900 inline-flex items-center"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  {isAdmin && (
+                    <>
+                      <button
+                        onClick={() => handleEditUser(user)}
+                        className="text-blue-600 hover:text-blue-900 inline-flex items-center"
+                        title="Edit user"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(user.id)}
+                        className="text-red-600 hover:text-red-900 inline-flex items-center"
+                        title="Delete user"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </>
+                  )}
                 </td>
               </tr>
             ))}

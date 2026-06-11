@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import api from '@/services/api/axios';
 import { useAuthStore } from '@/store/auth/useAuthStore';
+import { toast } from '@/lib/toast';
+import { formatApiError } from '@/lib/formatApiError';
 import { CircuitBoard, Plus, ChevronDown, ChevronUp, Package } from 'lucide-react';
 
 interface ProcurementRecord {
@@ -44,14 +46,21 @@ function CreateComponentModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name) { setError('Name is required'); return; }
+    if (!form.name) {
+      toast.warning('Name is required');
+      setError('Name is required');
+      return;
+    }
     setLoading(true); setError('');
     try {
       await api.post('/components', form);
+      toast.success('Component created successfully');
       onSuccess(); onClose();
       setForm({ name: '', type: 'Sensors', notes: '' });
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to create component');
+    } catch (err: unknown) {
+      const message = formatApiError(err, 'Failed to create component');
+      toast.error(message);
+      setError(message);
     } finally { setLoading(false); }
   };
 
@@ -96,6 +105,15 @@ function CreateComponentModal({
   );
 }
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+function mediaUrl(path: string | null): string | null {
+  if (!path) return null;
+  const normalized = path.replace(/\\/g, '/');
+  if (normalized.startsWith('http')) return normalized;
+  return `${API_BASE}${normalized.startsWith('/') ? '' : '/'}${normalized}`;
+}
+
 function ProcureModal({
   isOpen, onClose, onSuccess, component,
 }: {
@@ -103,16 +121,21 @@ function ProcureModal({
 }) {
   const today = new Date().toISOString().split('T')[0];
   const [form, setForm] = useState({ supplier: '', vendor: '', quantity: 1, cost: '', purchase_date: today });
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!component) return;
-    if (!form.cost || Number(form.cost) <= 0) { setError('Cost must be greater than 0'); return; }
+    if (!form.cost || Number(form.cost) <= 0) {
+      toast.warning('Cost must be greater than 0');
+      setError('Cost must be greater than 0');
+      return;
+    }
     setLoading(true); setError('');
     try {
-      await api.post(`/components/${component.id}/procure`, {
+      const res = await api.post(`/components/${component.id}/procure`, {
         component_id: component.id,
         supplier: form.supplier || null,
         vendor: form.vendor || null,
@@ -120,10 +143,23 @@ function ProcureModal({
         cost: Number(form.cost),
         purchase_date: form.purchase_date,
       });
+      if (imageFile) {
+        const formData = new FormData();
+        formData.append('file', imageFile);
+        await api.post(
+          `/components/${component.id}/procure/upload-image?procurement_id=${res.data.id}`,
+          formData,
+          { headers: { 'Content-Type': 'multipart/form-data' } }
+        );
+      }
       onSuccess(); onClose();
+      toast.success('Procurement recorded successfully');
       setForm({ supplier: '', vendor: '', quantity: 1, cost: '', purchase_date: today });
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to record procurement');
+      setImageFile(null);
+    } catch (err: unknown) {
+      const message = formatApiError(err, 'Failed to record procurement');
+      toast.error(message);
+      setError(message);
     } finally { setLoading(false); }
   };
 
@@ -168,6 +204,15 @@ function ProcureModal({
               onChange={e => setForm(f => ({ ...f, purchase_date: e.target.value }))}
               className="w-full border rounded-lg px-3 py-2 text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none" />
           </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Component Photo (JPG/PNG)</label>
+            <input
+              type="file"
+              accept=".jpg,.jpeg,.png"
+              onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+              className="w-full text-sm text-gray-700"
+            />
+          </div>
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose}
               className="flex-1 px-4 py-2 border rounded-lg text-gray-700 hover:bg-gray-50 font-medium">Cancel</button>
@@ -197,7 +242,9 @@ export default function ComponentsList() {
     try {
       const res = await api.get('/components');
       setComponents(res.data);
-    } catch { /* ignore */ }
+    } catch (err) {
+      toast.error(formatApiError(err, 'Failed to load components'));
+    }
     finally { setIsLoading(false); }
   };
 
@@ -262,14 +309,23 @@ export default function ComponentsList() {
                 {comp.procurements.length > 0 ? (
                   <div className="space-y-2">
                     {comp.procurements.map(p => (
-                      <div key={p.id} className="bg-white rounded-lg border border-gray-100 p-3 flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-bold text-gray-900">{p.quantity} units @ ${Number(p.cost).toFixed(2)}/unit</p>
-                          <p className="text-xs text-gray-500">
-                            {p.supplier && `Supplier: ${p.supplier}`}
-                            {p.supplier && p.vendor && ' · '}
-                            {p.vendor && `Vendor: ${p.vendor}`}
-                          </p>
+                      <div key={p.id} className="bg-white rounded-lg border border-gray-100 p-3 flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          {p.image_url && (
+                            <img
+                              src={mediaUrl(p.image_url) || ''}
+                              alt="Procurement"
+                              className="w-12 h-12 rounded object-cover border border-gray-200"
+                            />
+                          )}
+                          <div>
+                            <p className="text-sm font-bold text-gray-900">{p.quantity} units @ ${Number(p.cost).toFixed(2)}/unit</p>
+                            <p className="text-xs text-gray-500">
+                              {p.supplier && `Supplier: ${p.supplier}`}
+                              {p.supplier && p.vendor && ' · '}
+                              {p.vendor && `Vendor: ${p.vendor}`}
+                            </p>
+                          </div>
                         </div>
                         <div className="text-right text-xs text-gray-500">
                           {new Date(p.purchase_date).toLocaleDateString()}

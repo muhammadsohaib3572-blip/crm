@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import api from '@/services/api/axios';
 import { useAuthStore } from '@/store/auth/useAuthStore';
+import { toast } from '@/lib/toast';
+import { formatApiError } from '@/lib/formatApiError';
 
 type ActivityLog = {
   id: string;
@@ -30,9 +32,9 @@ export default function ActivityLogFeed() {
         const endpoint = isAdmin ? '/activity-logs' : '/activity-logs/my-activity';
         const response = await api.get(endpoint, { params: { limit: 50 } });
         setLogs(response.data);
-      } catch (err: any) {
-        console.error('Unable to load activity logs', err);
-        setError(err.response?.data?.detail || 'Unable to load activity logs.');
+      } catch (err: unknown) {
+        toast.error(formatApiError(err, 'Unable to load activity logs'));
+        setError(formatApiError(err, 'Unable to load activity logs.'));
       } finally {
         setIsLoading(false);
       }

@@ -5,6 +5,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import api from '@/services/api/axios';
+import { toast } from '@/lib/toast';
+import { formatApiError } from '@/lib/formatApiError';
 
 const taskSchema = z.object({
   title: z.string().min(1, 'Task title is required'),
@@ -46,7 +48,7 @@ export default function TaskFormModal({
       const res = await api.get('/users');
       setUsers(res.data);
     } catch (err) {
-      console.error('Failed to fetch users', err);
+      toast.error(formatApiError(err, 'Failed to load users'));
     }
   };
 
@@ -66,14 +68,18 @@ export default function TaskFormModal({
     try {
       if (taskId) {
         await api.patch(`/tasks/${taskId}`, data);
+        toast.success('Task updated successfully');
       } else {
         await api.post('/tasks', data);
+        toast.success('Task created successfully');
       }
       onSuccess();
       reset();
       onClose();
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to save task');
+    } catch (err: unknown) {
+      const message = formatApiError(err, 'Failed to save task');
+      toast.error(message);
+      setError(message);
     } finally {
       setIsLoading(false);
     }

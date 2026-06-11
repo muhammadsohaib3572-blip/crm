@@ -5,7 +5,7 @@ from sqlalchemy import desc, func
 
 
 from app.models.billing import Invoice, Payment, InvoiceStatus
-from app.schemas.ops import InvoiceCreate, PaymentCreate
+from app.schemas.ops import InvoiceCreate, InvoiceUpdate, PaymentCreate
 from uuid import UUID
 from typing import List, Optional
 
@@ -19,6 +19,22 @@ class BillingRepository:
             query = query.where(Invoice.client_id == client_id)
         result = await self.db.execute(query)
         return result.scalars().all()
+
+    async def get_invoice_by_id(self, invoice_id: UUID) -> Optional[Invoice]:
+        result = await self.db.execute(select(Invoice).where(Invoice.id == invoice_id))
+        return result.scalars().first()
+
+    async def update_invoice(self, db_invoice: Invoice, invoice_in: InvoiceUpdate) -> Invoice:
+        update_data = invoice_in.model_dump(exclude_unset=True)
+        for field, value in update_data.items():
+            setattr(db_invoice, field, value)
+        await self.db.commit()
+        await self.db.refresh(db_invoice)
+        return db_invoice
+
+    async def delete_invoice(self, db_invoice: Invoice) -> None:
+        await self.db.delete(db_invoice)
+        await self.db.commit()
 
     async def create_invoice(self, invoice_in: InvoiceCreate) -> Invoice:
         db_invoice = Invoice(**invoice_in.model_dump())

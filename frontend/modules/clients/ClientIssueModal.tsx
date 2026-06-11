@@ -5,6 +5,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import api from '@/services/api/axios';
+import { toast } from '@/lib/toast';
+import { formatApiError } from '@/lib/formatApiError';
 
 const issueSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -57,7 +59,7 @@ export default function ClientIssueModal({
         ]);
         setUsers([...hw.data, ...ag.data]);
       } catch (err) {
-        console.error('Failed to fetch assignment resources', err);
+        toast.error(formatApiError(err, 'Failed to load assignees'));
       }
     };
     if (isOpen) fetchResources();
@@ -68,11 +70,14 @@ export default function ClientIssueModal({
     setError(null);
     try {
       await api.post(`/clients/${clientId}/issues`, data);
+      toast.success('Issue logged successfully');
       onSuccess();
       reset();
       onClose();
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to log issue');
+    } catch (err: unknown) {
+      const message = formatApiError(err, 'Failed to log issue');
+      toast.error(message);
+      setError(message);
     } finally {
       setIsLoading(false);
     }

@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import api from '@/services/api/axios';
 import Link from 'next/link';
+import { toast } from '@/lib/toast';
+import { formatApiError } from '@/lib/formatApiError';
 import { Plus, Info } from 'lucide-react';
 import { useAuthStore } from '@/store/auth/useAuthStore';
 import InventoryItemModal from './InventoryItemModal';
@@ -32,7 +34,7 @@ export default function InventoryList() {
       const res = await api.get('/inventory');
       setItems(res.data);
     } catch (error) {
-      console.error('Failed to fetch inventory', error);
+      toast.error(formatApiError(error, 'Failed to load inventory'));
     } finally {
       setIsLoading(false);
     }

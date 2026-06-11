@@ -44,7 +44,7 @@ class AuditMiddleware(BaseHTTPMiddleware):
 
         # Determine action type based on method and path
         if request.method in mutating_methods:
-            if request.url.path.startswith(("/",)):
+            if request.url.path.startswith("/"):
                 path_parts = request.url.path.strip("/").split("/")
                 if len(path_parts) > 1:
                     entity_type = path_parts[1].upper()

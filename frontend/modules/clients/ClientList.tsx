@@ -5,6 +5,8 @@ import api from '@/services/api/axios';
 import Link from 'next/link';
 import ClientFormModal from './ClientFormModal';
 import { useAuthStore } from '@/store/auth/useAuthStore';
+import { toast } from '@/lib/toast';
+import { formatApiError } from '@/lib/formatApiError';
 import { Edit, Trash2, Plus } from 'lucide-react';
 
 interface Client {
@@ -33,7 +35,7 @@ export default function ClientList() {
       const res = await api.get('/clients');
       setClients(res.data);
     } catch (error) {
-      console.error('Failed to fetch clients', error);
+      toast.error(formatApiError(error, 'Failed to load clients'));
     } finally {
       setIsLoading(false);
     }
@@ -44,8 +46,9 @@ export default function ClientList() {
     try {
       await api.delete(`/clients/${clientId}`);
       setClients((prev) => prev.filter((c) => c.id !== clientId));
+      toast.success('Client deleted successfully');
     } catch (error) {
-      console.error('Failed to delete client', error);
+      toast.error(formatApiError(error, 'Failed to delete client'));
     }
   };
 

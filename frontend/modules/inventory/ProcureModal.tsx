@@ -5,6 +5,8 @@ import { type Resolver, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import api from '@/services/api/axios';
+import { toast } from '@/lib/toast';
+import { formatApiError } from '@/lib/formatApiError';
 
 const procureSchema = z.object({
   item_id: z.string().uuid(),
@@ -54,11 +56,14 @@ export default function ProcureModal({
     setError(null);
     try {
       await api.post('/inventory/procure', data);
+      toast.success('Procurement recorded successfully');
       onSuccess();
       reset();
       onClose();
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to record procurement');
+    } catch (err: unknown) {
+      const message = formatApiError(err, 'Failed to record procurement');
+      toast.error(message);
+      setError(message);
     } finally {
       setIsLoading(false);
     }

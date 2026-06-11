@@ -7,8 +7,10 @@ import * as z from 'zod';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import api from '@/services/api/axios';
+import { toast } from '@/lib/toast';
+import { formatApiError } from '@/lib/formatApiError';
 
-const roles = ['EMPLOYEE'] as const;
+const roles = ['ADMIN', 'MANAGER', 'BUSINESS', 'AGRONOMY', 'HARDWARE', 'ACCOUNTS', 'EMPLOYEE'] as const;
 
 const registerSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -42,9 +44,12 @@ export default function RegisterForm() {
 
     try {
       await api.post('/auth/register', data);
+      toast.success('Account created successfully. Please sign in.');
       router.push('/login');
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Registration failed. Please try again.');
+    } catch (err: unknown) {
+      const message = formatApiError(err, 'Registration failed. Please try again.');
+      toast.error(message);
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -74,10 +79,13 @@ export default function RegisterForm() {
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700">Role</label>
-          <select {...register('role')} className="w-full text-black px-4 py-2 mt-1 border rounded-md focus:ring-blue-500 focus:border-blue-500 outline-none">
-            {roles.map((r) => (
-              <option key={r} value={r}>
-                {r}
+          <select
+            {...register('role')}
+            className="w-full text-black px-4 py-2 mt-1 border rounded-md focus:ring-blue-500 focus:border-blue-500 outline-none"
+          >
+            {roles.map((role) => (
+              <option key={role} value={role}>
+                {role}
               </option>
             ))}
           </select>

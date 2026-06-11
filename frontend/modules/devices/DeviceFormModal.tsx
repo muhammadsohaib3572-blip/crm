@@ -5,6 +5,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import api from '@/services/api/axios';
+import { toast } from '@/lib/toast';
+import { formatApiError } from '@/lib/formatApiError';
 
 const deviceSchema = z.object({
   name: z.string().min(1, 'Device name is required'),
@@ -50,14 +52,18 @@ export default function DeviceFormModal({
     try {
       if (deviceId) {
         await api.patch(`/devices/${deviceId}`, data);
+        toast.success('Device updated successfully');
       } else {
         await api.post('/devices', data);
+        toast.success('Device created successfully');
       }
       onSuccess();
       reset();
       onClose();
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to save device');
+    } catch (err: unknown) {
+      const message = formatApiError(err, 'Failed to save device');
+      toast.error(message);
+      setError(message);
     } finally {
       setIsLoading(false);
     }

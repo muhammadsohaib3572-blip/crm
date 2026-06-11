@@ -5,6 +5,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import api from '@/services/api/axios';
+import { toast } from '@/lib/toast';
+import { formatApiError } from '@/lib/formatApiError';
 
 const userSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -57,17 +59,25 @@ export default function UserFormModal({
         await api.patch(`/users/${userId}`, payload);
       } else {
         if (!payload.password) {
-          setError('Password is required for new users');
+          const message = 'Password is required for new users';
+          toast.warning(message);
+          setError(message);
           setIsLoading(false);
           return;
         }
         await api.post('/users', payload);
+        toast.success('User created successfully');
+      }
+      if (userId) {
+        toast.success('User updated successfully');
       }
       onSuccess();
       reset();
       onClose();
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to save user');
+    } catch (err: unknown) {
+      const message = formatApiError(err, 'Failed to save user');
+      toast.error(message);
+      setError(message);
     } finally {
       setIsLoading(false);
     }

@@ -6,7 +6,7 @@ from uuid import UUID
 from decimal import Decimal
 from app.database.session import get_db
 from app.repositories.billing_repository import BillingRepository
-from app.schemas.ops import InvoiceCreate, InvoiceInDB, PaymentCreate, PaymentInDB
+from app.schemas.ops import InvoiceCreate, InvoiceUpdate, InvoiceInDB, PaymentCreate, PaymentInDB
 from app.models.user import User, UserRole
 from app.models.billing import Invoice, Payment, InvoiceStatus
 from app.models.client import Client
@@ -40,6 +40,65 @@ async def create_invoice(
         entity_id=invoice.id
     )
     return invoice
+
+@router.get("/invoices/{invoice_id}", response_model=InvoiceInDB)
+async def read_invoice(
+    invoice_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(check_role(BILLING_READ_ROLES))
+):
+    repo = BillingRepository(db)
+    invoice = await repo.get_invoice_by_id(invoice_id)
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    return invoice
+
+@router.patch("/invoices/{invoice_id}", response_model=InvoiceInDB)
+async def update_invoice(
+    invoice_id: UUID,
+    invoice_in: InvoiceUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(check_role(BILLING_WRITE_ROLES))
+):
+    repo = BillingRepository(db)
+    db_invoice = await repo.get_invoice_by_id(invoice_id)
+    if not db_invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    if db_invoice.status == InvoiceStatus.PAID and invoice_in.status and invoice_in.status != InvoiceStatus.PAID:
+        raise HTTPException(status_code=422, detail="Cannot change status of a paid invoice")
+    previous = {"status": db_invoice.status.value, "amount": str(db_invoice.amount)}
+    updated = await repo.update_invoice(db_invoice, invoice_in)
+    await ActivityLogService.log_activity(
+        db, current_user.id, current_user.full_name, "UPDATE", "Invoice",
+        f"Updated invoice {invoice_id}",
+        entity_id=invoice_id,
+        previous_value=str(previous),
+        new_value=str(invoice_in.model_dump(exclude_unset=True)),
+    )
+    return updated
+
+@router.delete("/invoices/{invoice_id}")
+async def delete_invoice(
+    invoice_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(check_role([UserRole.ADMIN, UserRole.MANAGER]))
+):
+    repo = BillingRepository(db)
+    db_invoice = await repo.get_invoice_by_id(invoice_id)
+    if not db_invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    if db_invoice.status == InvoiceStatus.PAID:
+        raise HTTPException(status_code=422, detail="Cannot delete a paid invoice. Cancel instead.")
+    paid_res = await db.execute(select(func.sum(Payment.amount)).where(Payment.invoice_id == invoice_id))
+    if (paid_res.scalar() or 0) > 0:
+        raise HTTPException(status_code=422, detail="Cannot delete invoice with recorded payments")
+    await ActivityLogService.log_activity(
+        db, current_user.id, current_user.full_name, "DELETE", "Invoice",
+        f"Deleted invoice {invoice_id} amount {db_invoice.amount}",
+        entity_id=invoice_id,
+    )
+    await repo.delete_invoice(db_invoice)
+    return {"message": "Invoice deleted successfully"}
 
 @router.get("/payments", response_model=List[PaymentInDB])
 async def read_payments(

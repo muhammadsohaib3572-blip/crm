@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import api from '@/services/api/axios';
 import TaskFormModal from './TaskFormModal';
 import { useAuthStore } from '@/store/auth/useAuthStore';
+import { toast } from '@/lib/toast';
+import { formatApiError } from '@/lib/formatApiError';
 import { Plus } from 'lucide-react';
 
 const statuses = ['PENDING', 'IN_PROGRESS', 'COMPLETED'];
@@ -34,7 +36,7 @@ export default function TaskBoard() {
       const res = await api.get('/tasks');
       setTasks(res.data);
     } catch (error) {
-      console.error('Failed to fetch tasks', error);
+      toast.error(formatApiError(error, 'Failed to load tasks'));
     } finally {
       setIsLoading(false);
     }
@@ -44,8 +46,9 @@ export default function TaskBoard() {
     try {
       await api.patch(`/tasks/${id}`, { status: newStatus });
       setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: newStatus } : t)));
+      toast.success('Task status updated');
     } catch (error) {
-      console.error('Failed to update task status', error);
+      toast.error(formatApiError(error, 'Failed to update task status'));
     }
   };
 
@@ -54,8 +57,9 @@ export default function TaskBoard() {
     try {
       await api.delete(`/tasks/${taskId}`);
       setTasks((prev) => prev.filter((t) => t.id !== taskId));
+      toast.success('Task deleted successfully');
     } catch (error) {
-      console.error('Failed to delete task', error);
+      toast.error(formatApiError(error, 'Failed to delete task'));
     }
   };
 

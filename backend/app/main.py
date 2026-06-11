@@ -26,7 +26,7 @@ app.add_middleware(RateLimitMiddleware, calls=100, period=60)
 # Set all CORS enabled origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins_list,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -35,7 +35,6 @@ app.add_middleware(
 # Serve uploaded files (invoices, inventory media)
 _uploads_dir = Path("uploads")
 _uploads_dir.mkdir(parents=True, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=str(_uploads_dir)), name="uploads")
 
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 app.include_router(users.router, prefix="/users", tags=["Users"])
@@ -52,6 +51,9 @@ app.include_router(dashboard.router, prefix="/dashboard", tags=["Dashboard"])
 app.include_router(issues.router, prefix="", tags=["Issues"])
 app.include_router(reports.router, prefix="/reports", tags=["Field Reports"])
 app.include_router(uploads.router, prefix="/uploads", tags=["File Uploads"])
+
+# Mount uploads after routers to avoid route conflicts (allow upload POSTs)
+app.mount("/uploads", StaticFiles(directory=str(_uploads_dir)), name="uploads")
 
 @app.get("/")
 async def root():

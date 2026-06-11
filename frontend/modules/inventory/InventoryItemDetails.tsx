@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import api from '@/services/api/axios';
 import { useAuthStore } from '@/store/auth/useAuthStore';
+import { toast } from '@/lib/toast';
+import { formatApiError } from '@/lib/formatApiError';
 import { Package, Truck, Image as ImageIcon, Calendar, Plus } from 'lucide-react';
 import ProcureModal from './ProcureModal';
 
@@ -38,7 +40,7 @@ export default function InventoryItemDetails({ id }: { id: string }) {
       const res = await api.get(`/inventory/${id}`);
       setItem(res.data);
     } catch (error) {
-      console.error('Failed to fetch inventory item', error);
+      toast.error(formatApiError(error, 'Failed to load inventory item'));
     } finally {
       setIsLoading(false);
     }
