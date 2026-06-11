@@ -10,7 +10,7 @@ import { toast } from '@/lib/toast';
 import { formatApiError } from '@/lib/formatApiError';
 import { Plus, Download, CreditCard, Filter, Upload, XCircle, Trash2 } from 'lucide-react';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://crm-production-e6ff.up.railway.app/';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 function fileUrl(filePath: string | null): string | null {
   if (!filePath) return null;
