@@ -475,7 +475,7 @@ export default function BillingLedger() {
                           className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-800"
                           title="Cancel invoice"
                         >
-                          <XCircle className="w-3.5 h-3.5" />
+                          <X className="w-3.5 h-3.5" />
                         </button>
                       )}
 
