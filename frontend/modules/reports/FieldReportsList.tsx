@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import api from '@/services/api/axios';
 import { useAuthStore } from '@/store/auth/useAuthStore';
+import { toast } from '@/lib/toast';
+import { formatApiError } from '@/lib/formatApiError';
 import { FileText, Plus, Calendar, Tag } from 'lucide-react';
 
 interface FieldReport {
@@ -14,6 +16,15 @@ interface FieldReport {
   report_date: string;
   client_id: string;
   created_at: string;
+  attachments: string[] | null;
+}
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+function attachmentUrl(path: string): string {
+  const normalized = path.replace(/\\/g, '/');
+  if (normalized.startsWith('http')) return normalized;
+  return `${API_BASE}${normalized.startsWith('/') ? '' : '/'}${normalized}`;
 }
 
 interface Client {
@@ -40,18 +51,34 @@ function CreateReportModal({
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [attachment, setAttachment] = useState<File | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.client_id || !form.title) { setError('Client and title are required'); return; }
+    if (!form.client_id || !form.title) {
+      toast.warning('Client and title are required');
+      setError('Client and title are required');
+      return;
+    }
     setLoading(true); setError('');
     try {
-      await api.post('/reports', form);
+      const res = await api.post('/reports', form);
+      if (attachment) {
+        const formData = new FormData();
+        formData.append('file', attachment);
+        await api.post(`/uploads/reports/${res.data.id}/upload`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+      }
       onSuccess(); onClose();
+      toast.success('Field report created successfully');
       setForm({ client_id: '', report_type: 'WEEKLY', title: '', summary: '', notes: '',
         report_date: new Date().toISOString().split('T')[0] });
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to create report');
+      setAttachment(null);
+    } catch (err: unknown) {
+      const message = formatApiError(err, 'Failed to create report');
+      toast.error(message);
+      setError(message);
     } finally { setLoading(false); }
   };
 
@@ -100,6 +127,15 @@ function CreateReportModal({
               placeholder="Brief summary..." />
           </div>
           <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Attachment (PDF / Image)</label>
+            <input
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png"
+              onChange={(e) => setAttachment(e.target.files?.[0] || null)}
+              className="w-full text-sm text-gray-700"
+            />
+          </div>
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
             <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
               rows={3} className="w-full border rounded-lg px-3 py-2 text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none resize-none"
@@ -133,7 +169,9 @@ export default function FieldReportsList() {
     try {
       const res = await api.get('/reports');
       setReports(res.data);
-    } catch { /* ignore */ }
+    } catch (err) {
+      toast.error(formatApiError(err, 'Failed to load reports'));
+    }
     finally { setIsLoading(false); }
   };
 
@@ -184,6 +222,21 @@ export default function FieldReportsList() {
                   </div>
                   {report.summary && <p className="text-sm text-gray-600">{report.summary}</p>}
                   {report.notes && <p className="text-xs text-gray-500 mt-1 line-clamp-2">{report.notes}</p>}
+                  {report.attachments && report.attachments.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {report.attachments.map((path, idx) => (
+                        <a
+                          key={idx}
+                          href={attachmentUrl(path)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[10px] font-bold text-blue-600 hover:underline"
+                        >
+                          Attachment {report.attachments!.length > 1 ? idx + 1 : ''}
+                        </a>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="text-right text-xs text-gray-500 flex-shrink-0 ml-4">

@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import api from '@/services/api/axios';
 import LeadFormModal from './LeadFormModal';
+import { toast } from '@/lib/toast';
+import { formatApiError } from '@/lib/formatApiError';
 import { Plus, Calendar, Clock, MapPin, MessageSquare } from 'lucide-react';
 import { useAuthStore } from '@/store/auth/useAuthStore';
 
@@ -74,9 +76,12 @@ function ActivityModal({
         notes: form.notes || null,
       });
       onSuccess(); onClose();
+      toast.success('Activity logged successfully');
       setForm({ activity_type: 'FOLLOW_UP', scheduled_at: '', notes: '' });
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to log activity');
+    } catch (err: unknown) {
+      const message = formatApiError(err, 'Failed to log activity');
+      toast.error(message);
+      setError(message);
     } finally { setLoading(false); }
   };
 
@@ -139,7 +144,7 @@ export default function LeadsKanban() {
       const res = await api.get('/leads');
       setLeads(res.data);
     } catch (err) {
-      console.error('Failed to fetch leads', err);
+      toast.error(formatApiError(err, 'Failed to load leads'));
     } finally {
       setIsLoading(false);
     }
@@ -150,15 +155,20 @@ export default function LeadsKanban() {
   const moveLead = async (id: string, currentStage: string, newStage: string) => {
     const allowed = ALLOWED_TRANSITIONS[currentStage] ?? [];
     if (!allowed.includes(newStage)) {
-      setMoveError(`Cannot move from ${currentStage.replace(/_/g,' ')} to ${newStage.replace(/_/g,' ')}`);
+      const message = `Cannot move from ${currentStage.replace(/_/g,' ')} to ${newStage.replace(/_/g,' ')}`;
+      toast.warning(message);
+      setMoveError(message);
       setTimeout(() => setMoveError(null), 3000);
       return;
     }
     try {
       await api.patch(`/leads/${id}`, { stage: newStage });
       setLeads(prev => prev.map(l => l.id === id ? { ...l, stage: newStage } : l));
-    } catch (err: any) {
-      setMoveError(err.response?.data?.detail || 'Failed to update lead stage');
+      toast.success('Lead stage updated');
+    } catch (err: unknown) {
+      const message = formatApiError(err, 'Failed to update lead stage');
+      toast.error(message);
+      setMoveError(message);
       setTimeout(() => setMoveError(null), 4000);
     }
   };
@@ -168,7 +178,10 @@ export default function LeadsKanban() {
     try {
       await api.delete(`/leads/${leadId}`);
       setLeads(prev => prev.filter(l => l.id !== leadId));
-    } catch { /* ignore */ }
+      toast.success('Lead deleted successfully');
+    } catch (err) {
+      toast.error(formatApiError(err, 'Failed to delete lead'));
+    }
   };
 
   const handleConvert = async (leadId: string) => {
@@ -176,8 +189,11 @@ export default function LeadsKanban() {
     try {
       await api.post(`/leads/${leadId}/convert`);
       await fetchLeads();
-    } catch (err: any) {
-      setMoveError(err.response?.data?.detail || 'Failed to convert lead');
+      toast.success('Lead converted to client successfully');
+    } catch (err: unknown) {
+      const message = formatApiError(err, 'Failed to convert lead');
+      toast.error(message);
+      setMoveError(message);
       setTimeout(() => setMoveError(null), 4000);
     }
   };

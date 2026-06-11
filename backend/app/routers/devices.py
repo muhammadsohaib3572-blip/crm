@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from typing import List
 from uuid import UUID
 from app.database.session import get_db
@@ -44,7 +45,14 @@ async def create_device(
     current_user: User = Depends(check_role(DEVICE_WRITE_ROLES))
 ):
     repo = DeviceRepository(db)
-    device = await repo.create(device_in, current_user.id)
+    try:
+        device = await repo.create(device_in, current_user.id)
+    except IntegrityError as exc:
+        await db.rollback()
+        error_msg = str(exc.orig).lower() if getattr(exc, 'orig', None) else str(exc).lower()
+        if 'serial_number' in error_msg or 'unique' in error_msg or 'duplicate' in error_msg:
+            raise HTTPException(status_code=409, detail="Serial Number already exists")
+        raise HTTPException(status_code=400, detail="Database error occurred while creating device")
 
     # Audit log
     await ActivityLogService.log_activity(
@@ -137,7 +145,14 @@ async def update_device(
             current_user.id not in [db_device.assigned_hardware_id, db_device.assigned_agronomist_id]:
         raise HTTPException(status_code=403, detail="Not authorized to update this device")
 
-    updated = await repo.update(db_device, device_in, current_user.id)
+    try:
+        updated = await repo.update(db_device, device_in, current_user.id)
+    except IntegrityError as exc:
+        await db.rollback()
+        error_msg = str(exc.orig).lower() if getattr(exc, 'orig', None) else str(exc).lower()
+        if 'serial_number' in error_msg or 'unique' in error_msg or 'duplicate' in error_msg:
+            raise HTTPException(status_code=409, detail="Serial Number already exists")
+        raise HTTPException(status_code=400, detail="Database error occurred while updating device")
 
     # Audit log for updates
     await ActivityLogService.log_activity(

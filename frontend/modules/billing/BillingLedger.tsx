@@ -6,7 +6,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import api from '@/services/api/axios';
 import { useAuthStore } from '@/store/auth/useAuthStore';
-import { Plus, Download, CreditCard, Filter, Upload, XCircle, Trash2 } from 'lucide-react';
+import { toast } from '@/lib/toast';
+import { formatApiError } from '@/lib/formatApiError';
+import { Plus, Download, CreditCard, Filter, Upload, XCircle, Trash2, X } from 'lucide-react';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://crm-production-e6ff.up.railway.app/';
 
@@ -15,6 +17,16 @@ function fileUrl(filePath: string | null): string | null {
   const normalized = filePath.replace(/\\/g, '/').replace(/^\/?uploads\//, '/uploads/');
   if (normalized.startsWith('http')) return normalized;
   return `${API_BASE}${normalized.startsWith('/') ? '' : '/'}${normalized}`;
+}
+
+interface Payment {
+  id: string;
+  client_id: string;
+  invoice_id: string;
+  amount: number;
+  payment_date: string;
+  payment_method: string | null;
+  created_at: string;
 }
 
 interface Invoice {
@@ -81,12 +93,14 @@ function NewInvoiceModal({
     setError(null);
     try {
       await api.post('/billing/invoices', data);
+      toast.success('Invoice created successfully');
       onSuccess();
       reset();
       onClose();
-    } catch (err: any) {
-      const detail = err.response?.data?.detail;
-      setError(Array.isArray(detail) ? detail.map((d: any) => d.msg).join(', ') : detail || 'Failed to create invoice');
+    } catch (err: unknown) {
+      const message = formatApiError(err, 'Failed to create invoice');
+      toast.error(message);
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -179,12 +193,14 @@ function RecordPaymentModal({
     setError(null);
     try {
       await api.post('/billing/payments', data);
+      toast.success('Payment recorded successfully');
       onSuccess();
       reset();
       onClose();
-    } catch (err: any) {
-      const detail = err.response?.data?.detail;
-      setError(Array.isArray(detail) ? detail.map((d: any) => d.msg).join(', ') : detail || 'Failed to record payment');
+    } catch (err: unknown) {
+      const message = formatApiError(err, 'Failed to record payment');
+      toast.error(message);
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -238,6 +254,7 @@ function RecordPaymentModal({
 export default function BillingLedger() {
   const { user } = useAuthStore();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
@@ -251,10 +268,14 @@ export default function BillingLedger() {
 
   const fetchInvoices = async () => {
     try {
-      const res = await api.get('/billing/invoices');
-      setInvoices(res.data);
+      const [invRes, payRes] = await Promise.all([
+        api.get('/billing/invoices'),
+        api.get('/billing/payments'),
+      ]);
+      setInvoices(invRes.data);
+      setPayments(payRes.data);
     } catch (error) {
-      console.error('Failed to fetch invoices', error);
+      toast.error(formatApiError(error, 'Failed to load billing records'));
     } finally {
       setIsLoading(false);
     }
@@ -271,7 +292,7 @@ export default function BillingLedger() {
     if (url) {
       window.open(url, '_blank');
     } else {
-      alert('No file attached to this invoice.');
+      toast.warning('No file attached to this invoice.');
     }
   };
 
@@ -279,8 +300,9 @@ export default function BillingLedger() {
     try {
       await api.patch(`/billing/invoices/${invoiceId}`, { status });
       fetchInvoices();
-    } catch {
-      alert('Failed to update invoice status.');
+      toast.success('Invoice status updated');
+    } catch (err) {
+      toast.error(formatApiError(err, 'Failed to update invoice status'));
     }
   };
 
@@ -294,8 +316,9 @@ export default function BillingLedger() {
     try {
       await api.delete(`/billing/invoices/${invoiceId}`);
       setInvoices(prev => prev.filter(i => i.id !== invoiceId));
-    } catch (err: any) {
-      alert(err.response?.data?.detail || 'Failed to delete invoice.');
+      toast.success('Invoice deleted successfully');
+    } catch (err: unknown) {
+      toast.error(formatApiError(err, 'Failed to delete invoice'));
     }
   };
 
@@ -307,8 +330,9 @@ export default function BillingLedger() {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       fetchInvoices();
-    } catch {
-      alert('Failed to upload invoice file.');
+      toast.success('Invoice file uploaded successfully');
+    } catch (err) {
+      toast.error(formatApiError(err, 'Failed to upload invoice file'));
     }
   };
 
@@ -473,6 +497,40 @@ export default function BillingLedger() {
                   <td colSpan={6} className="px-6 py-16 text-center text-gray-700 font-medium">
                     {statusFilter !== 'ALL' ? `No ${statusFilter} invoices found.` : 'No invoice records found.'}
                   </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="mt-8 bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+        <div className="p-6 border-b">
+          <h2 className="text-xl font-bold text-gray-900">Payment History</h2>
+          <p className="text-sm text-gray-700 mt-0.5">{payments.length} payment{payments.length !== 1 ? 's' : ''} recorded</p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Date</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Invoice</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Amount</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Method</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {payments.slice(0, 20).map((payment) => (
+                <tr key={payment.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-3 text-sm text-gray-700">{new Date(payment.payment_date).toLocaleDateString()}</td>
+                  <td className="px-6 py-3 text-sm font-mono text-gray-900">INV-{payment.invoice_id.slice(0, 8).toUpperCase()}</td>
+                  <td className="px-6 py-3 text-sm font-bold text-green-700">${Number(payment.amount).toLocaleString()}</td>
+                  <td className="px-6 py-3 text-sm text-gray-600">{payment.payment_method || '—'}</td>
+                </tr>
+              ))}
+              {payments.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="px-6 py-12 text-center text-gray-500">No payments recorded yet.</td>
                 </tr>
               )}
             </tbody>

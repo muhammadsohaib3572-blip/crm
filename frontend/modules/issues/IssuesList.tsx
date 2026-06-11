@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import api from '@/services/api/axios';
 import { useAuthStore } from '@/store/auth/useAuthStore';
+import { toast } from '@/lib/toast';
+import { formatApiError } from '@/lib/formatApiError';
 import { AlertCircle, Plus, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 
@@ -49,7 +51,11 @@ function CreateIssueModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.client_id || !form.title) { setError('Client and title are required'); return; }
+    if (!form.client_id || !form.title) {
+      toast.warning('Client and title are required');
+      setError('Client and title are required');
+      return;
+    }
     setLoading(true); setError('');
     try {
       await api.post(`/clients/${form.client_id}/issues`, {
@@ -59,9 +65,12 @@ function CreateIssueModal({
         status: form.status,
       });
       onSuccess(); onClose();
+      toast.success('Issue created successfully');
       setForm({ client_id: '', title: '', description: '', priority: 'MEDIUM', status: 'OPEN' });
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to create issue');
+    } catch (err: unknown) {
+      const message = formatApiError(err, 'Failed to create issue');
+      toast.error(message);
+      setError(message);
     } finally { setLoading(false); }
   };
 
@@ -148,7 +157,9 @@ export default function IssuesList() {
       allClients.forEach(c => { map[c.id] = c; });
       setClientMap(map);
       setIssues(issuesRes.data);
-    } catch { /* ignore */ }
+    } catch (err) {
+      toast.error(formatApiError(err, 'Failed to load issues'));
+    }
     finally { setIsLoading(false); }
   };
 
@@ -156,8 +167,9 @@ export default function IssuesList() {
     try {
       await api.patch(`/issues/${issueId}`, { status });
       setIssues(prev => prev.map(i => i.id === issueId ? { ...i, status: status as Issue['status'] } : i));
-    } catch {
-      console.error('Failed to update issue status');
+      toast.success('Issue status updated');
+    } catch (err) {
+      toast.error(formatApiError(err, 'Failed to update issue status'));
     }
   };
 

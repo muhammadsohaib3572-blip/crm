@@ -5,6 +5,8 @@ import api from '@/services/api/axios';
 import Link from 'next/link';
 import DeviceFormModal from './DeviceFormModal';
 import { useAuthStore } from '@/store/auth/useAuthStore';
+import { toast } from '@/lib/toast';
+import { formatApiError } from '@/lib/formatApiError';
 import { Trash2, Edit, Plus } from 'lucide-react';
 
 interface Device {
@@ -42,7 +44,7 @@ export default function DeviceList() {
       const res = await api.get('/devices');
       setDevices(res.data);
     } catch (error) {
-      console.error('Failed to fetch devices', error);
+      toast.error(formatApiError(error, 'Failed to load devices'));
     } finally {
       setIsLoading(false);
     }
@@ -53,8 +55,9 @@ export default function DeviceList() {
     try {
       await api.delete(`/devices/${deviceId}`);
       setDevices((prev) => prev.filter((d) => d.id !== deviceId));
+      toast.success('Device deleted successfully');
     } catch (error) {
-      console.error('Failed to delete device', error);
+      toast.error(formatApiError(error, 'Failed to delete device'));
     }
   };
 

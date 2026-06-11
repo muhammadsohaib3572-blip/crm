@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import api from '@/services/api/axios';
 import { useAuthStore } from '@/store/auth/useAuthStore';
+import { toast } from '@/lib/toast';
 import { NAV_ITEMS } from '@/lib/rbac';
 
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -44,6 +45,7 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
       // ignore errors — clear local auth anyway
     } finally {
       clearAuth();
+      toast.success('Signed out successfully');
       window.location.href = '/login';
     }
   };

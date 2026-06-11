@@ -211,6 +211,10 @@ async def delete_uploaded_file(
         file_path = INVOICE_DIR / filename
     elif file_type == "inventory":
         file_path = INVENTORY_DIR / filename
+    elif file_type == "reports":
+        file_path = REPORTS_DIR / filename
+    elif file_type == "components":
+        file_path = Path("uploads/components") / filename
     else:
         raise HTTPException(status_code=400, detail="Invalid file type")
 

@@ -5,6 +5,8 @@ import { type Resolver, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import api from '@/services/api/axios';
+import { toast } from '@/lib/toast';
+import { formatApiError } from '@/lib/formatApiError';
 
 const itemSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -47,11 +49,14 @@ export default function InventoryItemModal({
     setError(null);
     try {
       await api.post('/inventory', data);
+      toast.success('Inventory item added successfully');
       onSuccess();
       reset();
       onClose();
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to save inventory item');
+    } catch (err: unknown) {
+      const message = formatApiError(err, 'Failed to save inventory item');
+      toast.error(message);
+      setError(message);
     } finally {
       setIsLoading(false);
     }

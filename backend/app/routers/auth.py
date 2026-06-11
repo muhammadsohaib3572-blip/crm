@@ -12,7 +12,7 @@ from app.routers.deps import get_current_user_for_middleware
 from app.models.user import User, UserRole
 from app.core.security import get_password_hash
 from app.core.config import settings
-from app.core.rbac import PUBLIC_REGISTER_ROLES
+# from app.core.rbac import PUBLIC_REGISTER_ROLES
 
 router = APIRouter()
 
@@ -21,17 +21,18 @@ async def register(
     user_in: UserCreate,
     db: AsyncSession = Depends(get_db)
 ):
-    """Register a new user (public registration limited to EMPLOYEE when enabled)."""
+    """Register a new user. Public registration is enabled by default and controlled by ALLOW_PUBLIC_REGISTER."""
     if not settings.ALLOW_PUBLIC_REGISTER:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Public registration is disabled. Contact an administrator."
         )
 
-    if user_in.role not in PUBLIC_REGISTER_ROLES:
+    allowed_roles = [role.strip() for role in settings.PUBLIC_REGISTER_ROLES.split(',') if role.strip()]
+    if user_in.role.name not in allowed_roles:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Public registration only allows EMPLOYEE role."
+            detail="Public registration role is not allowed."
         )
 
     user_repo = UserRepository(db)
@@ -46,7 +47,7 @@ async def register(
     user = User(
         email=user_in.email,
         full_name=user_in.full_name,
-        role=UserRole.EMPLOYEE,
+        role=user_in.role,
         is_active=user_in.is_active,
         password_hash=get_password_hash(user_in.password)
     )

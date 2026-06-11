@@ -103,7 +103,7 @@ async def update_user(
 async def delete_user(
     user_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(check_role([UserRole.ADMIN, UserRole.MANAGER]))
+    current_user: User = Depends(check_role([UserRole.ADMIN]))
 ):
     """Delete user (Admin only)"""
     result = await db.execute(select(User).where(User.id == user_id))

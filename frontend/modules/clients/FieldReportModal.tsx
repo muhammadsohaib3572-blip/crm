@@ -5,6 +5,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import api from '@/services/api/axios';
+import { toast } from '@/lib/toast';
+import { formatApiError } from '@/lib/formatApiError';
 
 const reportSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -67,17 +69,12 @@ export default function FieldReportModal({
       onSuccess();
       reset();
       setAttachment(null);
+      toast.success('Field report submitted successfully');
       onClose();
-    } catch (err: any) {
-      const detail = err.response?.data?.detail;
-      if (Array.isArray(detail)) {
-        // FastAPI 422 validation errors — extract messages
-        setError(detail.map((d: any) => d.msg).join(', '));
-      } else if (typeof detail === 'string') {
-        setError(detail);
-      } else {
-        setError('Failed to submit report. Please check all fields.');
-      }
+    } catch (err: unknown) {
+      const message = formatApiError(err, 'Failed to submit report. Please check all fields.');
+      toast.error(message);
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -150,7 +147,7 @@ export default function FieldReportModal({
               type="file"
               accept=".pdf,.jpg,.jpeg,.png"
               onChange={(e) => setAttachment(e.target.files?.[0] || null)}
-              className="w-full mt-1 text-sm text-gray-700"
+              className="w-full mt-1 p-2 bg-gray-100 border border-gray-300 rounded cursor-pointer hover:cursor-pointer focus:outline-none"
             />
           </div>
 

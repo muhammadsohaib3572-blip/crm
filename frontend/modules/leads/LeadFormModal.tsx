@@ -5,6 +5,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import api from '@/services/api/axios';
+import { toast } from '@/lib/toast';
+import { formatApiError } from '@/lib/formatApiError';
 
 const leadSchema = z.object({
   name: z.string().min(1, 'Lead name is required'),
@@ -59,14 +61,18 @@ export default function LeadFormModal({
       
       if (leadId) {
         await api.patch(`/leads/${leadId}`, payload);
+        toast.success('Lead updated successfully');
       } else {
         await api.post('/leads', payload);
+        toast.success('Lead created successfully');
       }
       onSuccess();
       reset();
       onClose();
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to save lead');
+    } catch (err: unknown) {
+      const message = formatApiError(err, 'Failed to save lead');
+      toast.error(message);
+      setError(message);
     } finally {
       setIsLoading(false);
     }

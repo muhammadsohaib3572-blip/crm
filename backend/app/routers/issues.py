@@ -13,6 +13,9 @@ from app.schemas.issue import IssueCreate, IssueUpdate, IssueInDB
 from app.routers.deps import get_current_user, check_role
 from app.core.rbac import ISSUE_READ_ROLES
 from app.services.activity_log_service import ActivityLogService
+from app.services.notification_service import NotificationService
+from app.schemas.notification import NotificationCreate
+from app.models.notification import NotificationType
 
 router = APIRouter()
 
@@ -70,6 +73,20 @@ async def create_client_issue(
     await db.refresh(issue)
 
     if issue.assigned_to_id:
+        try:
+            await NotificationService.create_notification(
+                db,
+                NotificationCreate(
+                    user_id=issue.assigned_to_id,
+                    title="New Issue Assigned",
+                    message=f"Issue '{issue.title}' requires your attention",
+                    type=NotificationType.WARNING,
+                    link=f"/clients/{client_id}",
+                ),
+            )
+        except Exception:
+            pass
+
         task_repo = TaskRepository(db)
         task = await task_repo.create(TaskCreate(
             title=f"Issue resolution: {issue.title}",

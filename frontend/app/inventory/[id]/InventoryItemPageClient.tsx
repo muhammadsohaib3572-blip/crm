@@ -1,0 +1,22 @@
+'use client';
+
+import DashboardLayout from '@/components/layout/DashboardLayout';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import InventoryItemDetails from '@/modules/inventory/InventoryItemDetails';
+import Link from 'next/link';
+
+export default function InventoryItemPageClient({ id }: { id: string }) {
+  return (
+    <ProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'HARDWARE']}>
+      <DashboardLayout>
+        <div className="p-4 space-y-6 sm:p-6 lg:p-8">
+          <div className="flex items-center space-x-4">
+            <Link href="/inventory" className="text-blue-600 hover:underline">← Back to Inventory</Link>
+            <h1 className="text-3xl font-bold text-gray-900">Inventory Item Details</h1>
+          </div>
+          <InventoryItemDetails id={id} />
+        </div>
+      </DashboardLayout>
+    </ProtectedRoute>
+  );
+}

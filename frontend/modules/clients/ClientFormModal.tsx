@@ -5,6 +5,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import api from '@/services/api/axios';
+import { toast } from '@/lib/toast';
+import { formatApiError } from '@/lib/formatApiError';
 
 const serviceTags = [
   'AquaSave Pro',
@@ -80,14 +82,18 @@ export default function ClientFormModal({
     try {
       if (clientId) {
         await api.patch(`/clients/${clientId}`, data);
+        toast.success('Client updated successfully');
       } else {
         await api.post('/clients', data);
+        toast.success('Client created successfully');
       }
       onSuccess();
       reset();
       onClose();
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to save client');
+    } catch (err: unknown) {
+      const message = formatApiError(err, 'Failed to save client');
+      toast.error(message);
+      setError(message);
     } finally {
       setIsLoading(false);
     }

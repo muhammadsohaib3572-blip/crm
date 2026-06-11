@@ -124,6 +124,10 @@ async def _business_dashboard(db: AsyncSession) -> dict:
     )
     stats["meetings_this_week"] = meetings_r.scalar()
 
+    # Total clients for business dashboard
+    clients_r = await db.execute(select(func.count(Client.id)))
+    stats["total_clients"] = clients_r.scalar()
+
     return stats
 
 

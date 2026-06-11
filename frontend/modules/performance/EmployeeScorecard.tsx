@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import api from '@/services/api/axios';
+import { toast } from '@/lib/toast';
+import { formatApiError } from '@/lib/formatApiError';
 import { Award, CheckCircle2, ListChecks, User } from 'lucide-react';
 
 interface PerformanceStat {
@@ -9,6 +11,8 @@ interface PerformanceStat {
   role: string;
   total: number;
   completed: number;
+  pending_tasks?: number;
+  in_progress_tasks?: number;
   score: number;
 }
 
@@ -22,7 +26,7 @@ export default function EmployeeScorecard() {
         const res = await api.get('/tasks/performance');
         setStats(res.data);
       } catch (error) {
-        console.error('Failed to fetch performance stats', error);
+        toast.error(formatApiError(error, 'Failed to load performance data'));
       } finally {
         setIsLoading(false);
       }
@@ -68,6 +72,18 @@ export default function EmployeeScorecard() {
                 </div>
                 <div className="text-xl font-bold text-green-700">{stat.completed}</div>
               </div>
+              {(stat.pending_tasks != null || stat.in_progress_tasks != null) && (
+                <>
+                  <div className="bg-orange-50 p-4 rounded-lg border border-orange-100">
+                    <span className="text-xs font-medium text-orange-600">Pending</span>
+                    <div className="text-lg font-bold text-orange-700">{stat.pending_tasks ?? 0}</div>
+                  </div>
+                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                    <span className="text-xs font-medium text-blue-600">In Progress</span>
+                    <div className="text-lg font-bold text-blue-700">{stat.in_progress_tasks ?? 0}</div>
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="mt-6">

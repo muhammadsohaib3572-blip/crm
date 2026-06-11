@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import api from '@/services/api/axios';
+import { toast } from '@/lib/toast';
+import { formatApiError } from '@/lib/formatApiError';
 
 interface HistoryEntry {
   id: string;
@@ -32,7 +34,7 @@ export default function DeviceDetails({ id }: { id: string }) {
         const res = await api.get(`/devices/${id}`);
         setDevice(res.data);
       } catch (error) {
-        console.error('Failed to fetch device details', error);
+        toast.error(formatApiError(error, 'Failed to load device details'));
       } finally {
         setIsLoading(false);
       }

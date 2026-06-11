@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import api from '@/services/api/axios';
 import { useAuthStore } from '@/store/auth/useAuthStore';
+import { toast } from '@/lib/toast';
+import { formatApiError } from '@/lib/formatApiError';
 import ClientIssueModal from './ClientIssueModal';
 import FieldReportModal from './FieldReportModal';
 import { Plus, Calendar, FileText, AlertCircle } from 'lucide-react';
@@ -37,7 +39,15 @@ interface FieldReport {
   report_type: string;
   notes: string | null;
   created_at: string;
-  file_path: string | null;
+  attachments: string[] | null;
+}
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+function reportAttachmentUrl(path: string): string {
+  const normalized = path.replace(/\\/g, '/');
+  if (normalized.startsWith('http')) return normalized;
+  return `${API_BASE}${normalized.startsWith('/') ? '' : '/'}${normalized}`;
 }
 
 interface Client {
@@ -63,6 +73,7 @@ export default function ClientProfile({ id }: { id: string }) {
   const [issues, setIssues] = useState<ClientIssue[]>([]);
   const [reports, setReports] = useState<FieldReport[]>([]);
   const [balance, setBalance] = useState<number | null>(null);
+  const [ledger, setLedger] = useState<{ type: string; amount: number; date: string; status?: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
@@ -72,7 +83,7 @@ export default function ClientProfile({ id }: { id: string }) {
       const res = await api.get(`/clients/${id}/issues`);
       setIssues(Array.isArray(res.data) ? res.data : []);
     } catch (error) {
-      console.error('Failed to fetch issues', error);
+      toast.error(formatApiError(error, 'Failed to load client issues'));
       setIssues([]);
     }
   };
@@ -82,7 +93,7 @@ export default function ClientProfile({ id }: { id: string }) {
       const res = await api.get('/reports', { params: { client_id: id } });
       setReports(Array.isArray(res.data) ? res.data : []);
     } catch (error) {
-      console.error('Failed to fetch reports', error);
+      toast.error(formatApiError(error, 'Failed to load field reports'));
       setReports([]);
     }
   };
@@ -90,33 +101,46 @@ export default function ClientProfile({ id }: { id: string }) {
   useEffect(() => {
     const fetchClientData = async () => {
       try {
-        const [clientRes, invoicesRes, balanceRes, issuesRes, reportsRes] = await Promise.all([
-          api.get(`/clients/${id}`),
-          api.get('/billing/invoices', { params: { client_id: id } }),
-          api.get(`/billing/clients/${id}/arrears`),
-          api.get(`/clients/${id}/issues`),
-          api.get('/reports', { params: { client_id: id } }),
-        ]);
+        const clientRes = await api.get(`/clients/${id}`);
+        const invoicesRes = await api.get('/billing/invoices', { params: { client_id: id } });
+        const issuesRes = await api.get(`/clients/${id}/issues`);
+        const reportsRes = await api.get('/reports', { params: { client_id: id } });
 
         setClient(clientRes.data);
         setInvoices(invoicesRes.data);
-        setBalance(balanceRes.data.outstanding_balance ?? null);
         setIssues(issuesRes.data);
         setReports(reportsRes.data);
+
+        try {
+          const balanceRes = await api.get(`/billing/clients/${id}/arrears`);
+          setBalance(balanceRes.data.outstanding_balance ?? null);
+        } catch {
+          setBalance(null);
+        }
+
+        if (user && ['ADMIN', 'MANAGER', 'ACCOUNTS'].includes(user.role)) {
+          try {
+            const ledgerRes = await api.get(`/billing/clients/${id}/ledger`);
+            setLedger(ledgerRes.data.items ?? []);
+          } catch {
+            setLedger([]);
+          }
+        }
       } catch (error) {
-        console.error('Failed to fetch client profile', error);
+        toast.error(formatApiError(error, 'Failed to load client profile'));
       } finally {
         setIsLoading(false);
       }
     };
     fetchClientData();
-  }, [id]);
+  }, [id, user]);
 
   if (isLoading) return <div className="p-8 text-center text-gray-700">Loading profile data...</div>;
   if (!client) return <div className='p-8 text-center text-gray-900 font-bold'>Client not found.</div>;
 
   const canLogIssue = user && ['ADMIN', 'MANAGER', 'BUSINESS'].includes(user.role);
   const canUploadReport = user && ['ADMIN', 'MANAGER', 'AGRONOMY'].includes(user.role);
+  const canViewLedger = user && ['ADMIN', 'MANAGER', 'ACCOUNTS'].includes(user.role);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pb-12">
@@ -268,6 +292,23 @@ export default function ClientProfile({ id }: { id: string }) {
           </div>
         </div>
 
+        {canViewLedger && ledger.length > 0 && (
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+            <h2 className="text-xl font-bold text-gray-900 border-b pb-2 mb-4">Payment Ledger</h2>
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {ledger.slice(0, 10).map((entry, idx) => (
+                <div key={`${entry.type}-${entry.date}-${idx}`} className="flex justify-between items-center py-2 border-b border-slate-50 last:border-0 text-sm">
+                  <span className={`font-bold uppercase text-[10px] px-2 py-0.5 rounded ${entry.type === 'PAYMENT' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                    {entry.type}
+                  </span>
+                  <span className="font-bold text-gray-900">${Number(entry.amount).toFixed(2)}</span>
+                  <span className="text-xs text-gray-500">{new Date(entry.date).toLocaleDateString()}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
           <div className="flex items-center justify-between border-b pb-2 mb-4">
             <h2 className="text-xl font-bold text-gray-900">Field Operations & Reports</h2>
@@ -301,16 +342,21 @@ export default function ClientProfile({ id }: { id: string }) {
                       <span className="text-[10px] text-gray-700 font-bold uppercase flex items-center">
                         <Calendar className="w-3 h-3 mr-1" /> {new Date(report.created_at).toLocaleDateString()}
                       </span>
-                      {report.file_path && (
-                        <a 
-                          href={report.file_path.replace(/\\/g, '/')} 
-                          target="_blank" 
-                          rel="noreferrer"
-                          className="text-xs text-blue-600 font-bold hover:underline bg-white px-2 py-1 rounded border border-blue-50 shadow-sm"
-                        >
-                          View Report PDF
-                        </a>
-                      )}
+                      {report.attachments && report.attachments.length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                          {report.attachments.map((path, idx) => (
+                            <a
+                              key={idx}
+                              href={reportAttachmentUrl(path)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-xs text-blue-600 font-bold hover:underline bg-white px-2 py-1 rounded border border-blue-50 shadow-sm"
+                            >
+                              View Attachment {report.attachments!.length > 1 ? idx + 1 : ''}
+                            </a>
+                          ))}
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 </div>
